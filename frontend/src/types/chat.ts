@@ -1,9 +1,10 @@
-﻿export interface Chat {
+export interface Chat {
   id: string;
   type: "chatroom" | "private";
   name?: string;
   admin_id?: string;
   auto_reset_enabled?: boolean;
+  auto_reset_accepted_by?: string[];
   created_at?: string;
   members?: Member[];
 }

@@ -20,7 +20,7 @@ app = FastAPI(title="NexusChat API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://chatiq-web.vercel.app/"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

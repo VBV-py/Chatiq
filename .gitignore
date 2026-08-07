@@ -8,17 +8,44 @@ venv/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
+coverage/
+.coverage
+htmlcov/
 
 # Environment
 .env
 *.env.local
+.env.*.local
 
-# Node
+# Node / Frontend
 node_modules/
 dist/
 .vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
 
-# Misc
+# Misc OS
 .DS_Store
 Thumbs.db
+desktop.ini
 *.log
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Project specific
+srs/
+setup.md
+backend/ws_test_close.py
+backend/ws_test.py
+backend/check_db.py

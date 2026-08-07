@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: { 
-    port: 5173
-    // allowedHosts: ["remained-searches-jail-filed.trycloudflare.com"]
+    port: 5173,
+    allowedHosts: ["https://chatiq-web.vercel.app/"]
   },
 });
