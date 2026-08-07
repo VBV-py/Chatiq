@@ -30,7 +30,10 @@ export function ChatroomHeader({ chat, onToggleSearch }: Props) {
     try { await deleteChatroom(chat.id); removeChatroom(chat.id); navigate("/dashboard"); } catch {}
   };
   const handleSummarize = async () => {
-    try { await summarizeChatroom(chat.id); } catch {}
+    try { 
+      await summarizeChatroom(chat.id);
+      alert("AI summary has been sent to your private chat with Chatty!");
+    } catch {}
   };
   const handleRemoveMember = async (userId: string) => {
     try { await removeMember(chat.id, userId); setMembers(m => m.filter(x => x.user_id !== userId)); } catch {}

@@ -1,4 +1,4 @@
-﻿import { Reaction } from "./reaction";
+import { Reaction } from "./reaction";
 
 export interface Message {
   id: string;
@@ -7,7 +7,7 @@ export interface Message {
   sender_type: "user" | "ai";
   sender_username?: string;
   content?: string;
-  message_type: "text" | "image" | "video" | "audio" | "file" | "sticker";
+  message_type: "text" | "image" | "video" | "audio" | "file" | "sticker" | "ai_summary_interactive";
   sticker_id?: string;
   edited: boolean;
   deleted: boolean;

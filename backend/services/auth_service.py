@@ -1,4 +1,4 @@
-﻿from core.database import supabase
+from core.database import supabase
 from core.security import hash_password, verify_password, create_access_token
 from fastapi import HTTPException
 
@@ -46,4 +46,18 @@ def get_user_by_id(user_id: str) -> dict:
 
 def update_preferred_language(user_id: str, language: str) -> dict:
     result = supabase.table("users").update({"preferred_language": language}).eq("id", user_id).execute()
+    return result.data[0]
+
+def get_or_create_chatty_bot() -> dict:
+    existing = supabase.table("users").select("*").eq("username", "Chatty").execute()
+    if existing.data:
+        return existing.data[0]
+    
+    password_hash = hash_password("supersecret_bot_password_123!")
+    result = supabase.table("users").insert({
+        "username": "Chatty",
+        "email": "chatty_bot@chatiq.app",
+        "password_hash": password_hash,
+        "preferred_language": "en"
+    }).execute()
     return result.data[0]

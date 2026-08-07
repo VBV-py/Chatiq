@@ -25,22 +25,6 @@ export function MessageItem({ message, chatId }: Props) {
   const [editVal, setEditVal] = useState(message.content || "");
   const [translation, setTranslation] = useState<string>();
   const isOwn = message.sender_id === user?.id;
-
-  if (message.sender_type === "ai") return <SystemMessage message={message} />;
-  if (message.deleted) return (
-    <div className={`message-wrapper ${isOwn ? "own" : "other"}`}>
-      <div className={`message-bubble ${isOwn ? "own" : "other"} message-deleted`}>Message deleted</div>
-    </div>
-  );
-
-  if (message.message_type === "sticker") return (
-    <div className={`message-wrapper ${isOwn ? "own" : "other"}`}>
-      {!isOwn && <div className="message-sender">{message.sender_username}</div>}
-      <img src={message.content || ""} alt="sticker" style={{ width: 80, height: 80 }} />
-      <div className="message-time">{formatDate(message.created_at)}</div>
-    </div>
-  );
-
   const handleEdit = async () => {
     try { const m = await editMessage(message.id, editVal); updateMessage(chatId, message.id, m); setEditing(false); } catch {}
   };
@@ -57,6 +41,27 @@ export function MessageItem({ message, chatId }: Props) {
       updateMessage(chatId, message.id, { reactions: [...message.reactions, { ...r, username: user?.username }] });
     } catch {}
   };
+
+  const handleKeep = () => {
+    updateMessage(chatId, message.id, { message_type: "text" });
+  };
+
+  if (message.sender_type === "ai") return <SystemMessage message={message} onDelete={handleDelete} onKeep={handleKeep} />;
+  if (message.deleted) return (
+    <div className={`message-wrapper ${isOwn ? "own" : "other"}`}>
+      <div className={`message-bubble ${isOwn ? "own" : "other"} message-deleted`}>Message deleted</div>
+    </div>
+  );
+
+  if (message.message_type === "sticker") return (
+    <div className={`message-wrapper ${isOwn ? "own" : "other"}`}>
+      {!isOwn && <div className="message-sender">{message.sender_username}</div>}
+      <img src={message.content || ""} alt="sticker" style={{ width: 80, height: 80 }} />
+      <div className="message-time">{formatDate(message.created_at)}</div>
+    </div>
+  );
+
+
 
   return (
     <div className={`message-wrapper ${isOwn ? "own" : "other"}`} style={{ position: "relative" }}>

@@ -39,14 +39,18 @@ def remove_member(chat_id: str, user_id: str, current_user: dict = Depends(get_c
     return {"message": "Member removed"}
 
 @router.delete("/chatrooms/{chat_id}")
-def delete_chatroom(chat_id: str, current_user: dict = Depends(get_current_user)):
-    chatroom_service.delete_chatroom(chat_id, current_user["id"])
+async def delete_chatroom(chat_id: str, current_user: dict = Depends(get_current_user)):
+    broadcasts = chatroom_service.delete_chatroom(chat_id, current_user["id"])
+    for p_chat_id, msg_data in broadcasts:
+        await manager.broadcast(p_chat_id, {"event": RECEIVE_MESSAGE, "data": msg_data})
     return {"message": "Chatroom deleted"}
 
 @router.post("/chatrooms/{chat_id}/summarize")
-def summarize(chat_id: str, current_user: dict = Depends(get_current_user)):
-    result = chatroom_service.generate_and_post_summary(chat_id, "manual", current_user["id"])
-    return result
+async def summarize(chat_id: str, current_user: dict = Depends(get_current_user)):
+    result = chatroom_service.generate_and_send_private_summaries(chat_id, "manual", current_user["id"])
+    for p_chat_id, msg_data in result.get("broadcasts", []):
+        await manager.broadcast(p_chat_id, {"event": RECEIVE_MESSAGE, "data": msg_data})
+    return {"message": "Summaries sent"}
 
 @router.get("/chatrooms/{chat_id}/messages")
 def messages(chat_id: str, limit: int = 100000, offset: int = 0, current_user: dict = Depends(get_current_user)):

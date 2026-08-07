@@ -64,7 +64,12 @@ def delete_message(message_id: str, user_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Message not found")
     m = msg.data[0]
     if m["sender_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Can only delete your own messages")
+        if m["message_type"] == "ai_summary_interactive":
+            member = supabase.table("chat_members").select("id").eq("chat_id", m["chat_id"]).eq("user_id", user_id).execute()
+            if not member.data:
+                raise HTTPException(status_code=403, detail="Can only delete messages in chats you belong to")
+        else:
+            raise HTTPException(status_code=403, detail="Can only delete your own messages")
     # Delete attachments from storage
     attachments = supabase.table("attachments").select("file_url").eq("message_id", message_id).execute()
     for att in attachments.data or []:
