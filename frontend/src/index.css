@@ -69,18 +69,19 @@ body {
 .nav-sliding:hover .nav-label { opacity: 1; transition-delay: 0.1s; }
 
 .chat-sidebar {
-  display: flex; flex-direction: row; height: 100%;
-  border-right: 1px solid var(--border);
-  background: var(--bg-tertiary);
+  width: 320px; min-width: 320px; background: var(--bg-tertiary);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
 }
-.sidebar-column {
-  width: 280px; min-width: 280px; 
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
+.sidebar-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
 }
-.sidebar-column:last-child {
-  border-right: none;
+.sidebar-tab {
+  flex: 1; padding: 12px 0; text-align: center; font-size: 13px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent;
+  transition: var(--transition);
 }
+.sidebar-tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 .main-content {
   flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;
