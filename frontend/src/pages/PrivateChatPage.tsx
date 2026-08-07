@@ -57,7 +57,7 @@ export default function PrivateChatPage() {
   if (!chat) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1 }}><Spinner /></div>;
 
   return (
-    <div className="app-layout" style={{ flexDirection: "column", height: "100vh" }}>
+    <div className="chat-container">
       <PrivateChatHeader chat={chat} onToggleSearch={() => { setSearchOpen(s => !s); clear(); }} onUpdate={setChat} />
       {searchOpen && (
         <div>
