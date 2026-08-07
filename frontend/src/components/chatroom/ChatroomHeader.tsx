@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Chat, Member } from "../../types/chat";
 import { useAuthStore } from "../../store/authStore";
-import { deleteChatroom, summarizeChatroom, getChatroomMembers, removeMember } from "../../api/chatrooms";
+import { deleteChatroom, summarizeChatroom, getChatroomMembers, removeMember, clearChatroomMessages } from "../../api/chatrooms";
 import { InviteMemberModal } from "./InviteMemberModal";
 import { MemberList } from "./MemberList";
 import { Modal } from "../shared/Modal";
@@ -33,6 +33,10 @@ export function ChatroomHeader({ chat, onToggleSearch }: Props) {
   const handleRemoveMember = async (userId: string) => {
     try { await removeMember(chat.id, userId); setMembers(m => m.filter(x => x.user_id !== userId)); } catch {}
   };
+  const handleClear = async () => {
+    if (!confirm("Clear all messages in this chat? This cannot be undone.")) return;
+    try { await clearChatroomMessages(chat.id); window.location.reload(); } catch {}
+  };
 
   return (
     <>
@@ -50,6 +54,7 @@ export function ChatroomHeader({ chat, onToggleSearch }: Props) {
               <button className="dropdown-item" onClick={() => { loadMembers(); setShowMenu(false); }}>Members</button>
               <button className="dropdown-item" onClick={() => { setShowInvite(true); setShowMenu(false); }}>Invite</button>
               <button className="dropdown-item" onClick={() => { handleSummarize(); setShowMenu(false); }}>AI Summary</button>
+              <button className="dropdown-item danger" onClick={() => { handleClear(); setShowMenu(false); }}>Clear Chat</button>
               {isAdmin && <button className="dropdown-item danger" onClick={() => { handleDelete(); setShowMenu(false); }}>Delete Room</button>}
             </div>
           )}

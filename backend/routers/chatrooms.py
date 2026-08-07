@@ -52,6 +52,11 @@ def summarize(chat_id: str, current_user: dict = Depends(get_current_user)):
 def messages(chat_id: str, limit: int = 100000, offset: int = 0, current_user: dict = Depends(get_current_user)):
     return get_messages(chat_id, current_user["id"], limit, offset)
 
+@router.delete("/chatrooms/{chat_id}/messages")
+def clear_messages(chat_id: str, current_user: dict = Depends(get_current_user)):
+    from services.message_service import clear_chat
+    return clear_chat(chat_id, current_user["id"])
+
 @router.get("/chatrooms/{chat_id}/members")
 def members(chat_id: str, current_user: dict = Depends(get_current_user)):
     return chatroom_service.get_members(chat_id)

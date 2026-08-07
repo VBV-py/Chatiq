@@ -28,6 +28,11 @@ def list_private_chats(current_user: dict = Depends(get_current_user)):
 def messages(chat_id: str, limit: int = 100000, offset: int = 0, current_user: dict = Depends(get_current_user)):
     return get_messages(chat_id, current_user["id"], limit, offset)
 
+@router.delete("/private-chats/{chat_id}/messages")
+def clear_messages(chat_id: str, current_user: dict = Depends(get_current_user)):
+    from services.message_service import clear_chat
+    return clear_chat(chat_id, current_user["id"])
+
 @router.get("/private-chats/{chat_id}/search")
 def search(chat_id: str, q: str = Query(...), current_user: dict = Depends(get_current_user)):
     return search_messages(chat_id, q, current_user["id"])

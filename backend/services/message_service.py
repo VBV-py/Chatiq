@@ -1,4 +1,4 @@
-﻿from core.database import supabase
+from core.database import supabase
 from fastapi import HTTPException
 from typing import Optional, List, Dict, Any
 
@@ -120,3 +120,12 @@ def get_messages(chat_id: str, user_id: str, limit: int = 50, offset: int = 0) -
         msg["attachments"] = atts.data or []
         messages.append(msg)
     return messages
+
+def clear_chat(chat_id: str, user_id: str) -> dict:
+    member = supabase.table("chat_members").select("id").eq("chat_id", chat_id).eq("user_id", user_id).execute()
+    if not member.data:
+        raise HTTPException(status_code=403, detail="Not a member of this chat")
+    
+    # Delete messages from DB
+    result = supabase.table("messages").delete().eq("chat_id", chat_id).execute()
+    return {"message": "Chat cleared successfully"}

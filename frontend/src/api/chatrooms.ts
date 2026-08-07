@@ -34,3 +34,6 @@ export const getChatroomMembers = (chatId: string) =>
 
 export const searchChatroomMessages = (chatId: string, q: string) =>
   api.get<Message[]>(`/chatrooms/${chatId}/search`, { params: { q } }).then(r => r.data);
+
+export const clearChatroomMessages = (chatId: string) =>
+  api.delete(`/chatrooms/${chatId}/messages`).then(r => r.data);

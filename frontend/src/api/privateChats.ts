@@ -25,3 +25,6 @@ export const acceptAutoReset = (chatId: string) =>
 
 export const disableAutoReset = (chatId: string) =>
   api.post(`/private-chats/${chatId}/auto-reset/disable`).then(r => r.data);
+
+export const clearPrivateChatMessages = (chatId: string) =>
+  api.delete(`/private-chats/${chatId}/messages`).then(r => r.data);
