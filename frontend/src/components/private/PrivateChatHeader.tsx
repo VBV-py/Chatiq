@@ -6,6 +6,8 @@ import { useChatStore } from "../../store/chatStore";
 import { useNavigate } from "react-router-dom";
 import { AutoResetSettings } from "./AutoResetSettings";
 import { Modal } from "../shared/Modal";
+import { ArrowLeft, MessageCircle, MoreVertical } from "lucide-react";
+
 interface Props { chat: Chat; onToggleSearch: () => void; onUpdate: (c: Chat) => void; }
 export function PrivateChatHeader({ chat, onToggleSearch, onUpdate }: Props) {
   const { user } = useAuthStore();
@@ -27,13 +29,13 @@ export function PrivateChatHeader({ chat, onToggleSearch, onUpdate }: Props) {
   return (
     <>
       <div className="chat-header">
-        <button className="btn-icon" onClick={() => navigate("/dashboard")}>←</button>
+        <button className="btn-icon" onClick={() => navigate("/dashboard")}><ArrowLeft size={20} /></button>
         <div className="chat-header-info">
-          <div className="chat-header-name">💬 {partner?.username || "Chat"}</div>
+          <div className="chat-header-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><MessageCircle size={18} /> {partner?.username || "Chat"}</div>
           <div className="chat-header-sub">{partner?.is_online ? "● Online" : "○ Offline"}</div>
         </div>
         <div className="chat-header-actions dropdown-container">
-          <button className="btn-icon" title="Options" onClick={() => setShowMenu(!showMenu)}>⋮</button>
+          <button className="btn-icon" title="Options" onClick={() => setShowMenu(!showMenu)}><MoreVertical size={20} /></button>
           {showMenu && (
             <div className="dropdown-menu">
               <button className="dropdown-item" onClick={() => { onToggleSearch(); setShowMenu(false); }}>Search</button>

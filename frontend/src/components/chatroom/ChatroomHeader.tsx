@@ -7,6 +7,8 @@ import { MemberList } from "./MemberList";
 import { Modal } from "../shared/Modal";
 import { useChatStore } from "../../store/chatStore";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Hash, MoreVertical } from "lucide-react";
+
 interface Props { chat: Chat; onToggleSearch: () => void; }
 export function ChatroomHeader({ chat, onToggleSearch }: Props) {
   const { user } = useAuthStore();
@@ -41,13 +43,13 @@ export function ChatroomHeader({ chat, onToggleSearch }: Props) {
   return (
     <>
       <div className="chat-header">
-        <button className="btn-icon" onClick={() => navigate("/dashboard")}>←</button>
+        <button className="btn-icon" onClick={() => navigate("/dashboard")}><ArrowLeft size={20} /></button>
         <div className="chat-header-info">
-          <div className="chat-header-name">🏠 {chat.name}</div>
+          <div className="chat-header-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Hash size={18} /> {chat.name}</div>
           <div className="chat-header-sub">Chatroom</div>
         </div>
         <div className="chat-header-actions dropdown-container">
-          <button className="btn-icon" title="Options" onClick={() => setShowMenu(!showMenu)}>⋮</button>
+          <button className="btn-icon" title="Options" onClick={() => setShowMenu(!showMenu)}><MoreVertical size={20} /></button>
           {showMenu && (
             <div className="dropdown-menu">
               <button className="dropdown-item" onClick={() => { onToggleSearch(); setShowMenu(false); }}>Search</button>

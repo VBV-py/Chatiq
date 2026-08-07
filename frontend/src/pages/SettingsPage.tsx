@@ -1,7 +1,9 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useAuthStore } from "../store/authStore";
 import { updateLanguage } from "../api/auth";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, User, Globe } from "lucide-react";
+
 const LANGUAGES = [
   { code: "en", label: "English" }, { code: "es", label: "Spanish" }, { code: "fr", label: "French" },
   { code: "de", label: "German" }, { code: "ja", label: "Japanese" }, { code: "ko", label: "Korean" },
@@ -19,11 +21,11 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 20px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
-        <button className="btn-icon" onClick={() => navigate(-1)}>←</button>
+        <button className="btn-icon" onClick={() => navigate(-1)}><ArrowLeft size={20} /></button>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Settings</h1>
       </div>
       <div className="settings-section">
-        <h3>👤 Profile</h3>
+        <h3><User size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} /> Profile</h3>
         <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>
           <div><strong>Username:</strong> {user?.username}</div>
           <div><strong>Email:</strong> {user?.email}</div>
