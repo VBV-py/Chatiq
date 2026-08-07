@@ -1,6 +1,6 @@
 export interface Chat {
   id: string;
-  type: "chatroom" | "private";
+  type: "chatroom" | "private" | "group";
   name?: string;
   admin_id?: string;
   auto_reset_enabled?: boolean;
