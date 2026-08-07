@@ -2,8 +2,8 @@ import api from "./axiosInstance";
 import { Chat, Member } from "../types/chat";
 import { Message } from "../types/message";
 
-export const createChatroom = (name: string) =>
-  api.post<Chat>("/chatrooms", { name }).then(r => r.data);
+export const createChatroom = (name: string, chat_type?: string) =>
+  api.post<Chat>("/chatrooms", { name, chat_type }).then(r => r.data);
 
 export const getChatrooms = () =>
   api.get<Chat[]>("/chatrooms").then(r => r.data);

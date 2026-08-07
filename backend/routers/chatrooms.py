@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.post("/chatrooms", response_model=ChatOut)
 def create_chatroom(req: CreateChatroomRequest, current_user: dict = Depends(get_current_user)):
-    return ChatOut(**chatroom_service.create_chatroom(req.name, current_user["id"]))
+    return ChatOut(**chatroom_service.create_chatroom(req.name, current_user["id"], req.chat_type))
 
 @router.get("/chatrooms")
 def list_chatrooms(current_user: dict = Depends(get_current_user)):

@@ -1,19 +1,23 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Modal } from "../shared/Modal";
 import { createChatroom } from "../../api/chatrooms";
 import { useChatStore } from "../../store/chatStore";
-interface Props { onClose: () => void; }
-export function NewChatroomModal({ onClose }: Props) {
+interface Props { onClose: () => void; chatType?: "chatroom" | "group"; }
+export function NewChatroomModal({ onClose, chatType = "chatroom" }: Props) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const { addChatroom } = useChatStore();
+  const { addChatroom, addGroup } = useChatStore();
   const create = async () => {
     if (!name.trim()) return;
-    try { const c = await createChatroom(name.trim()); addChatroom(c); onClose(); }
+    try { 
+      const c = await createChatroom(name.trim(), chatType); 
+      if (chatType === "group") addGroup(c); else addChatroom(c); 
+      onClose(); 
+    }
     catch (e: any) { setError(e.response?.data?.detail || "Failed to create"); }
   };
   return (
-    <Modal title="New Chatroom" onClose={onClose} footer={
+    <Modal title={chatType === "group" ? "New Group" : "New Chatroom"} onClose={onClose} footer={
       <><button className="btn btn-secondary btn-sm" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary btn-sm" onClick={create}>Create</button></>
     }>

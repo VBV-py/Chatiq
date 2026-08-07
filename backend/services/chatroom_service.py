@@ -6,9 +6,11 @@ from services.auth_service import get_or_create_chatty_bot
 from services.private_chat_service import get_or_create_private_chat
 from datetime import datetime, timezone
 
-def create_chatroom(name: str, admin_id: str) -> dict:
+def create_chatroom(name: str, admin_id: str, chat_type: str = "chatroom") -> dict:
+    if chat_type not in ["chatroom", "group"]:
+        chat_type = "chatroom"
     result = supabase.table("chats").insert({
-        "type": "chatroom",
+        "type": chat_type,
         "name": name,
         "admin_id": admin_id,
     }).execute()
@@ -26,11 +28,11 @@ def get_user_chatrooms(user_id: str) -> list:
     chat_ids = [m["chat_id"] for m in memberships.data or []]
     if not chat_ids:
         return []
-    result = supabase.table("chats").select("*").eq("type", "chatroom").in_("id", chat_ids).execute()
+    result = supabase.table("chats").select("*").in_("type", ["chatroom", "group"]).in_("id", chat_ids).execute()
     return result.data or []
 
 def get_chatroom(chat_id: str) -> dict:
-    result = supabase.table("chats").select("*").eq("id", chat_id).eq("type", "chatroom").execute()
+    result = supabase.table("chats").select("*").eq("id", chat_id).in_("type", ["chatroom", "group"]).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Chatroom not found")
     return result.data[0]

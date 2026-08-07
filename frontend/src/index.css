@@ -69,8 +69,17 @@ body {
 .nav-sliding:hover .nav-label { opacity: 1; transition-delay: 0.1s; }
 
 .chat-sidebar {
-  width: 320px; min-width: 320px; background: var(--bg-tertiary);
-  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  display: flex; flex-direction: row; height: 100%;
+  border-right: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+.sidebar-column {
+  width: 280px; min-width: 280px; 
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.sidebar-column:last-child {
+  border-right: none;
 }
 
 .main-content {
