@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Chat, Member } from "../../types/chat";
 import { useAuthStore } from "../../store/authStore";
 import { deleteChatroom, summarizeChatroom, getChatroomMembers, removeMember } from "../../api/chatrooms";
@@ -14,6 +14,7 @@ export function ChatroomHeader({ chat, onToggleSearch }: Props) {
   const navigate = useNavigate();
   const [showInvite, setShowInvite] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const isAdmin = user?.id === chat.admin_id;
 
@@ -41,12 +42,17 @@ export function ChatroomHeader({ chat, onToggleSearch }: Props) {
           <div className="chat-header-name">🏠 {chat.name}</div>
           <div className="chat-header-sub">Chatroom</div>
         </div>
-        <div className="chat-header-actions">
-          <button className="btn-icon" title="Search" onClick={onToggleSearch}>🔍</button>
-          <button className="btn-icon" title="Members" onClick={loadMembers}>👥</button>
-          <button className="btn-icon" title="Invite" onClick={() => setShowInvite(true)}>➕</button>
-          <button className="btn-icon" title="AI Summary" onClick={handleSummarize}>🤖</button>
-          {isAdmin && <button className="btn-icon" title="Delete Room" onClick={handleDelete} style={{ color: "var(--danger)" }}>🗑️</button>}
+        <div className="chat-header-actions dropdown-container">
+          <button className="btn-icon" title="Options" onClick={() => setShowMenu(!showMenu)}>⋮</button>
+          {showMenu && (
+            <div className="dropdown-menu">
+              <button className="dropdown-item" onClick={() => { onToggleSearch(); setShowMenu(false); }}>Search</button>
+              <button className="dropdown-item" onClick={() => { loadMembers(); setShowMenu(false); }}>Members</button>
+              <button className="dropdown-item" onClick={() => { setShowInvite(true); setShowMenu(false); }}>Invite</button>
+              <button className="dropdown-item" onClick={() => { handleSummarize(); setShowMenu(false); }}>AI Summary</button>
+              {isAdmin && <button className="dropdown-item danger" onClick={() => { handleDelete(); setShowMenu(false); }}>Delete Room</button>}
+            </div>
+          )}
         </div>
       </div>
       {showInvite && <InviteMemberModal chatId={chat.id} onClose={() => setShowInvite(false)} />}

@@ -26,14 +26,7 @@ export default function DashboardPage() {
     <div className="dashboard-layout">
       <div className="dashboard-sidebar">
         <div className="sidebar-header">
-          <span className="sidebar-logo">💬 ChatIQ</span>
-          <div style={{ display: "flex", gap: 4 }}>
-            <a href="/settings" className="btn-icon" title="Settings">⚙️</a>
-            <button className="btn-icon" onClick={logout} title="Logout">🚪</button>
-          </div>
-        </div>
-        <div style={{ padding: "8px 8px 0" }}>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 8px" }}>👤 {user?.username}</div>
+          <span className="sidebar-logo">ChatIQ</span>
         </div>
 
         <div style={{ padding: "12px 8px 0" }}>
@@ -55,6 +48,21 @@ export default function DashboardPage() {
           <div className="sidebar-list" style={{ maxHeight: "35vh" }}>
             {privateChats.length === 0 && <div className="text-muted" style={{ padding: "8px 12px", fontSize: 13 }}>No private chats yet</div>}
             {privateChats.map(c => <PrivateChatCard key={c.id} chat={c} />)}
+          </div>
+        </div>
+        <div style={{ marginTop: "auto", borderTop: "1px solid var(--border)", padding: "16px" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "12px" }}>Account</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: 14 }}>
+                {user?.username?.charAt(0).toUpperCase()}
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>{user?.username}</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "16px" }}>
+            <a href="/settings" className="btn btn-ghost" style={{ justifyContent: "flex-start", padding: "8px 12px" }}>Settings</a>
+            <button className="btn btn-ghost" onClick={logout} style={{ justifyContent: "flex-start", padding: "8px 12px", color: "var(--danger)" }}>Logout</button>
           </div>
         </div>
       </div>
