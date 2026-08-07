@@ -1,4 +1,4 @@
-# NexusChat Deployment Setup (Step-by-Step)
+# ChatIQ Deployment Setup (Step-by-Step)
 
 This guide deploys:
 
@@ -98,7 +98,7 @@ After deploy, open:
 
 - `https://your-backend-domain/`
 
-Expected response includes `NexusChat API is running`.
+Expected response includes `ChatIQ API is running`.
 
 ## 6. Frontend Deployment (Vercel example)
 

@@ -1,5 +1,5 @@
-﻿-- =========================================
--- NexusChat Database Setup (Run this in Supabase SQL Editor)
+-- =========================================
+-- ChatIQ Database Setup (Run this in Supabase SQL Editor)
 -- =========================================
 
 -- 1. Users

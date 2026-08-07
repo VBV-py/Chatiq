@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { Link } from "react-router-dom";
 export function LoginForm() {
@@ -15,7 +15,7 @@ export function LoginForm() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">NexusChat</div>
+        <div className="auth-logo">ChatIQ</div>
         <div className="auth-subtitle">Sign in to continue chatting</div>
         <form className="auth-form" onSubmit={submit}>
           {error && <div className="error-msg">{error}</div>}

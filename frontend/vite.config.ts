@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [react()],
   server: { 
     port: 5173,
-    allowedHosts: ["https://chatiq-web.vercel.app/"]
+    allowedHosts: ["chatiq-vs.vercel.app"]
   },
 });

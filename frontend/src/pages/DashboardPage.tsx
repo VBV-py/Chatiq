@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useChat } from "../hooks/useChat";
 import { useAuth } from "../hooks/useAuth";
 import { ChatroomCard } from "../components/dashboard/ChatroomCard";
@@ -26,7 +26,7 @@ export default function DashboardPage() {
     <div className="dashboard-layout">
       <div className="dashboard-sidebar">
         <div className="sidebar-header">
-          <span className="sidebar-logo">💬 NexusChat</span>
+          <span className="sidebar-logo">💬 ChatIQ</span>
           <div style={{ display: "flex", gap: 4 }}>
             <a href="/settings" className="btn-icon" title="Settings">⚙️</a>
             <button className="btn-icon" onClick={logout} title="Logout">🚪</button>

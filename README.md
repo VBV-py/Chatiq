@@ -1,4 +1,4 @@
-﻿# NexusChat
+# ChatIQ
 
 > A Lightweight Chat Application with AI Summaries, Translation, and Search
 
@@ -28,7 +28,7 @@
 
 ## Overview
 
-NexusChat is a focused, real-time web chat application built as an academic/student project. It provides **two chat modes** — a temporary group chatroom and a persistent private chat — each powered by **three AI utilities**: summarization, translation, and message search.
+ChatIQ is a focused, real-time web chat application built as an academic/student project. It provides **two chat modes** — a temporary group chatroom and a persistent private chat — each powered by **three AI utilities**: summarization, translation, and message search.
 
 ---
 
@@ -96,7 +96,7 @@ NexusChat is a focused, real-time web chat application built as an academic/stud
 ## Project Structure
 
 ```
-NexusChat/
+ChatIQ/
 │
 ├── README.md
 ├── .env.example
@@ -271,7 +271,7 @@ NexusChat/
 │           └── constants.ts
 │
 └── srs/
-    └── NexusChat_SRS_v5.pdf
+    └── ChatIQ_SRS_v5.pdf
 ```
 
 ---
@@ -576,4 +576,4 @@ Unique constraint on (message_id, user_id, emoji).
 
 ---
 
-*Author: VT — NexusChat SRS v5 — August 2026*
+*Author: VT — ChatIQ SRS v5 — August 2026*
