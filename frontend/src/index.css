@@ -124,19 +124,69 @@ body {
 .input::placeholder { color: var(--text-muted); }
 .textarea { resize: none; min-height: 44px; max-height: 120px; }
 
-/* ===== AUTH PAGE ===== */
-.auth-page {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at 50% 0%, rgba(124,106,247,0.12) 0%, transparent 60%),
-              radial-gradient(ellipse at 100% 100%, rgba(61,214,245,0.06) 0%, transparent 40%),
-              var(--bg-primary);
-}
-.auth-card {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 48px;
-  width: 100%; max-width: 440px; box-shadow: var(--shadow);
-  animation: fadeSlideUp 0.4s ease;
-}
+  /* ===== AUTH PAGE ===== */
+  .auth-page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr; /* Default for mobile */
+    background: var(--bg-primary);
+  }
+  
+  @media (min-width: 768px) {
+    .auth-page {
+      grid-template-columns: 1.2fr 1fr; /* Left image slightly larger */
+    }
+  }
+
+  .auth-image-panel {
+    display: none; /* Hide on mobile */
+  }
+
+  @media (min-width: 768px) {
+    .auth-image-panel {
+      display: flex;
+      align-items: flex-end;
+      background: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat;
+      position: relative;
+    }
+    .auth-image-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 100%);
+    }
+    .auth-image-overlay {
+      position: relative;
+      z-index: 1;
+      padding: 60px;
+      color: white;
+    }
+    .auth-image-overlay h1 {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+    .auth-image-overlay p {
+      font-size: 18px;
+      opacity: 0.8;
+      max-width: 400px;
+    }
+  }
+
+  .auth-form-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: var(--bg-primary);
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 400px;
+    animation: fadeSlideUp 0.4s ease;
+  }
 .auth-logo { font-size: 28px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
 .auth-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
 .auth-form { display: flex; flex-direction: column; gap: 20px; }

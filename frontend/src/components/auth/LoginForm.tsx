@@ -14,22 +14,30 @@ export function LoginForm() {
   };
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-logo">ChatIQ</div>
-        <div className="auth-subtitle">Sign in to continue chatting</div>
-        <form className="auth-form" onSubmit={submit}>
-          {error && <div className="error-msg">{error}</div>}
-          <div className="input-group">
-            <label className="input-label">Email</label>
-            <input className="input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
-          </div>
-          <div className="input-group">
-            <label className="input-label">Password</label>
-            <input className="input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-          </div>
-          <button className="btn btn-primary btn-full" disabled={loading}>{loading ? "Signing in…" : "Sign in"}</button>
-        </form>
-        <div className="auth-footer">Don't have an account? <Link to="/register" className="auth-link">Register</Link></div>
+      <div className="auth-image-panel">
+        <div className="auth-image-overlay">
+          <h1>Welcome back to ChatIQ</h1>
+          <p>Connect, collaborate, and communicate instantly with your team.</p>
+        </div>
+      </div>
+      <div className="auth-form-panel">
+        <div className="auth-card">
+          <div className="auth-logo">ChatIQ</div>
+          <div className="auth-subtitle">Sign in to continue chatting</div>
+          <form className="auth-form" onSubmit={submit}>
+            {error && <div className="error-msg">{error}</div>}
+            <div className="input-group">
+              <label className="input-label">Email</label>
+              <input className="input" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Password</label>
+              <input className="input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+            </div>
+            <button className="btn btn-primary btn-full" disabled={loading}>{loading ? "Signing in…" : "Sign in"}</button>
+          </form>
+          <div className="auth-footer">Don't have an account? <Link to="/register" className="auth-link">Register</Link></div>
+        </div>
       </div>
     </div>
   );

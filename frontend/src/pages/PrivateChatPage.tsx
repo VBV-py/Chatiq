@@ -23,7 +23,7 @@ export default function PrivateChatPage() {
   const { user } = useAuthStore();
 
   const id = chatId || "";
-  const { messages } = useMessages(id, "private");
+  const { messages, loadMore, loadingMore, hasMore } = useMessages(id, "private");
   const { send, onEvent } = useSocket(id, "private");
   const { results, search, clear } = useSearch(id, "private");
 
@@ -65,7 +65,7 @@ export default function PrivateChatPage() {
           {results.length > 0 && <SearchResults results={results} />}
         </div>
       )}
-      <MessageList messages={messages} chatId={id} />
+      <MessageList messages={messages} chatId={id} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} />
       <TypingIndicator users={typingUsers} />
       <MessageInput
         onSendText={sendText}

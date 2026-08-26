@@ -53,7 +53,7 @@ async def summarize(chat_id: str, current_user: dict = Depends(get_current_user)
     return {"message": "Summaries sent"}
 
 @router.get("/chatrooms/{chat_id}/messages")
-def messages(chat_id: str, limit: int = 100000, offset: int = 0, current_user: dict = Depends(get_current_user)):
+def messages(chat_id: str, limit: int = 50, offset: int = 0, current_user: dict = Depends(get_current_user)):
     return get_messages(chat_id, current_user["id"], limit, offset)
 
 @router.delete("/chatrooms/{chat_id}/messages")
