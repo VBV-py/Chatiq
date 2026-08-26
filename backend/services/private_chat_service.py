@@ -1,4 +1,4 @@
-﻿from core.database import supabase
+from core.database import supabase
 from fastapi import HTTPException
 from datetime import datetime, timezone
 
@@ -26,14 +26,15 @@ def get_user_private_chats(user_id: str) -> list:
     chat_ids = [m["chat_id"] for m in memberships.data or []]
     if not chat_ids:
         return []
-    result = supabase.table("chats").select("*").eq("type", "private").in_("id", chat_ids).execute()
+    result = supabase.table("chats")\
+        .select("*, chat_members(*, users!chat_members_user_id_fkey(username))")\
+        .eq("type", "private").in_("id", chat_ids).execute()
+    
     chats = []
     for chat in result.data or []:
-        members = supabase.table("chat_members")\
-            .select("*, users!chat_members_user_id_fkey(username)")\
-            .eq("chat_id", chat["id"]).execute()
+        raw_members = chat.pop("chat_members", [])
         chat["members"] = []
-        for m in members.data or []:
+        for m in raw_members:
             u = m.pop("users", None)
             m["username"] = u["username"] if u else "Unknown"
             chat["members"].append(m)

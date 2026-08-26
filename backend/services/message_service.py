@@ -101,7 +101,7 @@ def get_messages(chat_id: str, user_id: str, limit: int = 50, offset: int = 0) -
         raise HTTPException(status_code=403, detail="Not a member of this chat")
 
     result = supabase.table("messages")\
-        .select("*, users!messages_sender_id_fkey(username)")\
+        .select("*, users!messages_sender_id_fkey(username), reactions(*, users!reactions_user_id_fkey(username)), attachments(*)")\
         .eq("chat_id", chat_id)\
         .order("created_at", desc=False)\
         .range(offset, offset + limit - 1)\
@@ -111,18 +111,17 @@ def get_messages(chat_id: str, user_id: str, limit: int = 50, offset: int = 0) -
     for msg in result.data or []:
         user_info = msg.pop("users", None)
         msg["sender_username"] = user_info["username"] if user_info else "AI"
-        # Get reactions
-        reactions = supabase.table("reactions")\
-            .select("*, users!reactions_user_id_fkey(username)")\
-            .eq("message_id", msg["id"]).execute()
+        
+        # Format reactions
+        raw_reactions = msg.pop("reactions", [])
         msg["reactions"] = []
-        for r in reactions.data or []:
+        for r in raw_reactions:
             u = r.pop("users", None)
             r["username"] = u["username"] if u else ""
             msg["reactions"].append(r)
-        # Get attachments
-        atts = supabase.table("attachments").select("*").eq("message_id", msg["id"]).execute()
-        msg["attachments"] = atts.data or []
+            
+        # Format attachments
+        msg["attachments"] = msg.pop("attachments", [])
         messages.append(msg)
     return messages
 
