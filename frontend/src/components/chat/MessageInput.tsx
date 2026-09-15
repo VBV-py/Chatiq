@@ -1,7 +1,8 @@
-﻿import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, KeyboardEvent } from "react";
 import { Sticker } from "../../types/sticker";
 import { StickerPicker } from "./StickerPicker";
 import { uploadFile } from "../../api/media";
+import { Smile, Paperclip, Send } from "lucide-react";
 
 interface Props {
   onSendText: (text: string) => void;
@@ -51,15 +52,15 @@ export function MessageInput({ onSendText, onSendSticker, onSendMedia, onTyping,
     <div className="message-input-area">
       {showStickers && <div style={{ marginBottom: 8 }}><StickerPicker onSelect={s => { onSendSticker(s); setShowStickers(false); }} onClose={() => setShowStickers(false)} /></div>}
       <div className="message-input-row">
-        <button className="btn-icon" onClick={() => setShowStickers(s => !s)} title="Stickers">😊</button>
-        <button className="btn-icon" onClick={() => fileRef.current?.click()} title="Attach" disabled={uploading}>📎</button>
+        <button className="btn-icon" onClick={() => setShowStickers(s => !s)} title="Stickers"><Smile size={20} /></button>
+        <button className="btn-icon" onClick={() => fileRef.current?.click()} title="Attach" disabled={uploading}><Paperclip size={20} /></button>
         <input ref={fileRef} type="file" style={{ display: "none" }} onChange={handleFile} accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" />
         <div className="message-input-wrap">
           <textarea className="message-textarea" placeholder="Type a message… (Enter to send)" rows={1}
             value={text} onChange={e => handleChange(e.target.value)} onKeyDown={handleKey}
           />
         </div>
-        <button className="send-btn" onClick={handleSend} disabled={!text.trim()}>➤</button>
+        <button className="send-btn" onClick={handleSend} disabled={!text.trim()}><Send size={18} /></button>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-﻿# NexusChat
+# ChatIQ
 
 > A Lightweight Chat Application with AI Summaries, Translation, and Search
 
@@ -28,7 +28,7 @@
 
 ## Overview
 
-NexusChat is a focused, real-time web chat application built as an academic/student project. It provides **two chat modes** — a temporary group chatroom and a persistent private chat — each powered by **three AI utilities**: summarization, translation, and message search.
+ChatIQ is a focused, real-time web chat application built as an academic/student project. It provides **three chat modes** — a temporary group chatroom, a persistent permanent group, and a persistent private chat — each powered by **three AI utilities**: summarization, translation, and message search.
 
 ---
 
@@ -41,6 +41,13 @@ NexusChat is a focused, real-time web chat application built as an academic/stud
 - **Auto-expiry**: room is automatically destroyed when all members go offline
 - **AI Summary**: generated before room deletion (and on-demand), posted as a system message with chatroom name, members present, and timestamp
 - Expiry summary is preserved and delivered to all past members even after the room is deleted
+
+### Feature 1b — Permanent Groups
+
+- Functions identically to a temporary chatroom (invite-based, multi-user)
+- **Persistent**: Unlike temporary rooms, permanent groups are never auto-deleted when members go offline
+- The group creator (admin) can still manually delete the group at any time
+- Perfect for long-term teams and persistent study groups
 
 ### Feature 2 — Private Chat
 
@@ -96,7 +103,7 @@ NexusChat is a focused, real-time web chat application built as an academic/stud
 ## Project Structure
 
 ```
-NexusChat/
+ChatIQ/
 │
 ├── README.md
 ├── .env.example
@@ -271,7 +278,7 @@ NexusChat/
 │           └── constants.ts
 │
 └── srs/
-    └── NexusChat_SRS_v5.pdf
+    └── ChatIQ_SRS_v5.pdf
 ```
 
 ---
@@ -576,4 +583,4 @@ Unique constraint on (message_id, user_id, emoji).
 
 ---
 
-*Author: VT — NexusChat SRS v5 — August 2026*
+*Author: VT — ChatIQ SRS v5 — August 2026*

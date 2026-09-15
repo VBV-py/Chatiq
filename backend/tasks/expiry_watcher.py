@@ -1,9 +1,8 @@
-﻿import asyncio
+import asyncio
 from core.database import supabase
-from services.chatroom_service import generate_and_post_summary, _delete_chatroom_data, get_members
+from services.chatroom_service import generate_and_send_private_summaries, _delete_chatroom_data
 from ws_core.manager import manager
-from ws_core.events import ROOM_EXPIRED, AI_SUMMARY_READY
-import json
+from ws_core.events import RECEIVE_MESSAGE
 
 async def expiry_watcher():
     """Polls every 30s for chatrooms where all members are offline."""
@@ -19,29 +18,11 @@ async def expiry_watcher():
                 all_offline = all(not m.get("is_online", False) for m in members.data)
                 ws_empty = manager.is_chat_empty(chat_id)
                 if all_offline and ws_empty:
-                    # Generate summary before deleting
+                    # Generate summary and send to private chats before deleting
                     try:
-                        member_names = []
-                        for m in members.data:
-                            user = supabase.table("users").select("username").eq("id", m["user_id"]).execute()
-                            if user.data:
-                                member_names.append(user.data[0]["username"])
-                        msgs = supabase.table("messages").select("*, users!messages_sender_id_fkey(username)").eq("chat_id", chat_id).eq("deleted", False).execute()
-                        messages = []
-                        for msg in msgs.data or []:
-                            u = msg.pop("users", None)
-                            msg["sender_username"] = u["username"] if u else "AI"
-                            messages.append(msg)
-                        from services.ai_service import summarize_conversation
-                        summary_text = summarize_conversation(messages, room["name"], member_names)
-                        # Save summary
-                        supabase.table("room_summaries").insert({
-                            "chat_id": chat_id,
-                            "chat_name": room["name"],
-                            "members_present": member_names,
-                            "summary_text": summary_text,
-                            "trigger": "expiry"
-                        }).execute()
+                        result = generate_and_send_private_summaries(chat_id, "expiry")
+                        for p_chat_id, msg_data in result.get("broadcasts", []):
+                            await manager.broadcast(p_chat_id, {"event": RECEIVE_MESSAGE, "data": msg_data})
                     except Exception as e:
                         print(f"[ExpiryWatcher] Summary generation failed: {e}")
                     # Delete chatroom

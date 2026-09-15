@@ -1,8 +1,9 @@
-﻿from pydantic import BaseModel
+from pydantic import BaseModel
 from typing import Optional, List
 
 class CreateChatroomRequest(BaseModel):
     name: str
+    chat_type: Optional[str] = "chatroom"
 
 class InviteRequest(BaseModel):
     username: str

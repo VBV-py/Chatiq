@@ -1,4 +1,4 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
 import { User } from "../types/user";
 
 interface AuthState {
@@ -10,17 +10,17 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: (() => {
-    try { return JSON.parse(localStorage.getItem("nexus_user") || "null"); } catch { return null; }
+    try { return JSON.parse(localStorage.getItem("chatiq_user") || "null"); } catch { return null; }
   })(),
-  token: localStorage.getItem("nexus_token"),
+  token: localStorage.getItem("chatiq_token"),
   setAuth: (user, token) => {
-    localStorage.setItem("nexus_token", token);
-    localStorage.setItem("nexus_user", JSON.stringify(user));
+    localStorage.setItem("chatiq_token", token);
+    localStorage.setItem("chatiq_user", JSON.stringify(user));
     set({ user, token });
   },
   clearAuth: () => {
-    localStorage.removeItem("nexus_token");
-    localStorage.removeItem("nexus_user");
+    localStorage.removeItem("chatiq_token");
+    localStorage.removeItem("chatiq_user");
     set({ user: null, token: null });
   },
 }));

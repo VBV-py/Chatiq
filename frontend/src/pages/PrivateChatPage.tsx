@@ -23,7 +23,7 @@ export default function PrivateChatPage() {
   const { user } = useAuthStore();
 
   const id = chatId || "";
-  const { messages } = useMessages(id, "private");
+  const { messages, loadMore, loadingMore, hasMore } = useMessages(id, "private");
   const { send, onEvent } = useSocket(id, "private");
   const { results, search, clear } = useSearch(id, "private");
 
@@ -57,7 +57,7 @@ export default function PrivateChatPage() {
   if (!chat) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1 }}><Spinner /></div>;
 
   return (
-    <div className="app-layout" style={{ flexDirection: "column", height: "100vh" }}>
+    <div className="chat-container">
       <PrivateChatHeader chat={chat} onToggleSearch={() => { setSearchOpen(s => !s); clear(); }} onUpdate={setChat} />
       {searchOpen && (
         <div>
@@ -65,7 +65,7 @@ export default function PrivateChatPage() {
           {results.length > 0 && <SearchResults results={results} />}
         </div>
       )}
-      <MessageList messages={messages} chatId={id} />
+      <MessageList messages={messages} chatId={id} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} />
       <TypingIndicator users={typingUsers} />
       <MessageInput
         onSendText={sendText}

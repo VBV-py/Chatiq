@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(auto_reset_scheduler())
     yield
 
-app = FastAPI(title="NexusChat API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="ChatIQ API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,4 +37,4 @@ app.include_router(ai.router, prefix="/api", tags=["AI"])
 
 @app.get("/")
 def root():
-    return {"message": "NexusChat API is running", "docs": "/docs"}
+    return {"message": "ChatIQ API is running", "docs": "/docs"}

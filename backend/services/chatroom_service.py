@@ -1,12 +1,16 @@
-﻿from core.database import supabase
+from core.database import supabase
 from fastapi import HTTPException
 from services.ai_service import summarize_conversation
 from services.message_service import get_messages
+from services.auth_service import get_or_create_chatty_bot
+from services.private_chat_service import get_or_create_private_chat
 from datetime import datetime, timezone
 
-def create_chatroom(name: str, admin_id: str) -> dict:
+def create_chatroom(name: str, admin_id: str, chat_type: str = "chatroom") -> dict:
+    if chat_type not in ["chatroom", "group"]:
+        chat_type = "chatroom"
     result = supabase.table("chats").insert({
-        "type": "chatroom",
+        "type": chat_type,
         "name": name,
         "admin_id": admin_id,
     }).execute()
@@ -24,11 +28,11 @@ def get_user_chatrooms(user_id: str) -> list:
     chat_ids = [m["chat_id"] for m in memberships.data or []]
     if not chat_ids:
         return []
-    result = supabase.table("chats").select("*").eq("type", "chatroom").in_("id", chat_ids).execute()
+    result = supabase.table("chats").select("*").in_("type", ["chatroom", "group"]).in_("id", chat_ids).execute()
     return result.data or []
 
 def get_chatroom(chat_id: str) -> dict:
-    result = supabase.table("chats").select("*").eq("id", chat_id).eq("type", "chatroom").execute()
+    result = supabase.table("chats").select("*").eq("id", chat_id).in_("type", ["chatroom", "group"]).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Chatroom not found")
     return result.data[0]
@@ -77,12 +81,17 @@ def get_members(chat_id: str) -> list:
 def set_member_online(chat_id: str, user_id: str, is_online: bool):
     supabase.table("chat_members").update({"is_online": is_online}).eq("chat_id", chat_id).eq("user_id", user_id).execute()
 
-def generate_and_post_summary(chat_id: str, trigger: str, user_id: str = None) -> dict:
+def generate_and_send_private_summaries(chat_id: str, trigger: str, user_id: str = None) -> dict:
     room = get_chatroom(chat_id)
     members_data = get_members(chat_id)
     member_names = [m["username"] for m in members_data]
     messages = get_messages(chat_id, user_id or members_data[0]["user_id"])
+    
+    if not messages:
+        return {"summary": {}, "broadcasts": []}
+
     summary_text = summarize_conversation(messages, room["name"], member_names)
+    
     # Save to room_summaries
     summary = supabase.table("room_summaries").insert({
         "chat_id": chat_id,
@@ -91,20 +100,39 @@ def generate_and_post_summary(chat_id: str, trigger: str, user_id: str = None) -
         "summary_text": summary_text,
         "trigger": trigger,
     }).execute()
-    # Post as system message
-    msg = supabase.table("messages").insert({
-        "chat_id": chat_id,
-        "sender_type": "ai",
-        "content": f"📋 **AI Summary — {room['name']}**\nMembers: {', '.join(member_names)}\n\n{summary_text}",
-        "message_type": "text",
-    }).execute()
-    return {"summary": summary.data[0] if summary.data else {}, "message": msg.data[0] if msg.data else {}}
 
-def delete_chatroom(chat_id: str, admin_id: str):
+    chatty_bot = get_or_create_chatty_bot()
+    broadcasts = []
+    
+    for member in members_data:
+        p_chat = get_or_create_private_chat(chatty_bot["id"], member["user_id"])
+        
+        # Post as ai_summary_interactive
+        msg = supabase.table("messages").insert({
+            "chat_id": p_chat["id"],
+            "sender_id": chatty_bot["id"],
+            "sender_type": "ai",
+            "content": f"📋 **AI Summary — {room['name']}**\nMembers: {', '.join(member_names)}\n\n{summary_text}",
+            "message_type": "ai_summary_interactive",
+        }).execute()
+        
+        if msg.data:
+            msg_data = msg.data[0]
+            msg_data["sender_username"] = "Chatty"
+            msg_data["reactions"] = []
+            msg_data["attachments"] = []
+            broadcasts.append((p_chat["id"], msg_data))
+
+    return {"summary": summary.data[0] if summary.data else {}, "broadcasts": broadcasts}
+
+def delete_chatroom(chat_id: str, admin_id: str) -> list:
     room = get_chatroom(chat_id)
     if room["admin_id"] != admin_id:
         raise HTTPException(status_code=403, detail="Only admin can delete room")
+        
+    result = generate_and_send_private_summaries(chat_id, "deleted", admin_id)
     _delete_chatroom_data(chat_id)
+    return result.get("broadcasts", [])
 
 def _delete_chatroom_data(chat_id: str):
     """Delete all messages/media/members and the chat itself."""

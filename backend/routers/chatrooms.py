@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.post("/chatrooms", response_model=ChatOut)
 def create_chatroom(req: CreateChatroomRequest, current_user: dict = Depends(get_current_user)):
-    return ChatOut(**chatroom_service.create_chatroom(req.name, current_user["id"]))
+    return ChatOut(**chatroom_service.create_chatroom(req.name, current_user["id"], req.chat_type))
 
 @router.get("/chatrooms")
 def list_chatrooms(current_user: dict = Depends(get_current_user)):
@@ -39,18 +39,27 @@ def remove_member(chat_id: str, user_id: str, current_user: dict = Depends(get_c
     return {"message": "Member removed"}
 
 @router.delete("/chatrooms/{chat_id}")
-def delete_chatroom(chat_id: str, current_user: dict = Depends(get_current_user)):
-    chatroom_service.delete_chatroom(chat_id, current_user["id"])
+async def delete_chatroom(chat_id: str, current_user: dict = Depends(get_current_user)):
+    broadcasts = chatroom_service.delete_chatroom(chat_id, current_user["id"])
+    for p_chat_id, msg_data in broadcasts:
+        await manager.broadcast(p_chat_id, {"event": RECEIVE_MESSAGE, "data": msg_data})
     return {"message": "Chatroom deleted"}
 
 @router.post("/chatrooms/{chat_id}/summarize")
-def summarize(chat_id: str, current_user: dict = Depends(get_current_user)):
-    result = chatroom_service.generate_and_post_summary(chat_id, "manual", current_user["id"])
-    return result
+async def summarize(chat_id: str, current_user: dict = Depends(get_current_user)):
+    result = chatroom_service.generate_and_send_private_summaries(chat_id, "manual", current_user["id"])
+    for p_chat_id, msg_data in result.get("broadcasts", []):
+        await manager.broadcast(p_chat_id, {"event": RECEIVE_MESSAGE, "data": msg_data})
+    return {"message": "Summaries sent"}
 
 @router.get("/chatrooms/{chat_id}/messages")
-def messages(chat_id: str, limit: int = 100000, offset: int = 0, current_user: dict = Depends(get_current_user)):
+def messages(chat_id: str, limit: int = 50, offset: int = 0, current_user: dict = Depends(get_current_user)):
     return get_messages(chat_id, current_user["id"], limit, offset)
+
+@router.delete("/chatrooms/{chat_id}/messages")
+def clear_messages(chat_id: str, current_user: dict = Depends(get_current_user)):
+    from services.message_service import clear_chat
+    return clear_chat(chat_id, current_user["id"])
 
 @router.get("/chatrooms/{chat_id}/members")
 def members(chat_id: str, current_user: dict = Depends(get_current_user)):
