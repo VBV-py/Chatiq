@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
     jwt_secret: str
     jwt_algorithm: str = "HS256"
+    cors_origins: str = "*"
     groq_api_key: Optional[str] = None
     groq_model: str = "llama-3.3-70b-versatile"
 

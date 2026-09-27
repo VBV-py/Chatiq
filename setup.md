@@ -65,6 +65,7 @@ SUPABASE_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_ALGORITHM=HS256
+CORS_ORIGINS=*
 GROQ_API_KEY=your-groq-api-key
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
@@ -177,9 +178,17 @@ VITE_API_BASE_URL=https://api.example.com
 VITE_WS_BASE_URL=wss://api.example.com
 ```
 
+Set the backend CORS origin to the exact deployed frontend origin:
+
+```env
+CORS_ORIGINS=https://your-frontend.example.com
+```
+
+For multiple frontend domains, use a comma-separated list without trailing slashes. Keep `CORS_ORIGINS=*` for local development only.
+
 Before exposing the service publicly:
 
-- restrict `allow_origins` in `backend/main.py` from `*` to known frontend origins;
+- set `CORS_ORIGINS` to known frontend origins rather than leaving the development wildcard;
 - keep Supabase service-role and Groq keys in host secret storage;
 - use HTTPS/WSS;
 - configure a public `media` bucket deliberately or replace public URLs with signed URLs;

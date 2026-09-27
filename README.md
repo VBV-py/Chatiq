@@ -196,6 +196,7 @@ Defined by `backend/core/config.py` and `backend/.env.example`:
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes           | Server-side Supabase client key                               |
 | `JWT_SECRET`                | Yes           | Signs and verifies custom JWTs                                |
 | `JWT_ALGORITHM`             | No            | JWT algorithm; defaults to`HS256`                           |
+| `CORS_ORIGINS`              | No            | Comma-separated frontend origins; defaults to `*`            |
 | `GROQ_API_KEY`              | No at startup | Required when translation or summaries are invoked            |
 | `GROQ_MODEL`                | No            | Groq model; defaults to`llama-3.3-70b-versatile`            |
 
@@ -536,7 +537,7 @@ Implemented controls:
 
 Current hardening gaps:
 
-- CORS allows every origin (`allow_origins=["*"]`).
+- CORS defaults to every origin for development; production should set `CORS_ORIGINS` to the exact frontend origin or comma-separated origins.
 - The service-role Supabase key is powerful; database RLS policy design is not represented in this repository.
 - There is no rate limiting, account lockout, refresh-token rotation, password reset, CSRF strategy, audit log, or request ID tracing.
 - WebSocket auth passes JWTs in a query string, which can appear in logs; a production design should consider a safer handshake mechanism.
@@ -569,7 +570,7 @@ A production deployment would need:
 - One process serving FastAPI and WebSockets behind an HTTPS/WSS reverse proxy.
 - Correct `VITE_API_BASE_URL` and `VITE_WS_BASE_URL` values at frontend build time.
 - A Supabase `media` bucket and all migrations applied, including the group constraint update for older databases.
-- Restricted CORS origins rather than `*`.
+- Set `CORS_ORIGINS` to the exact deployed frontend origin rather than leaving the development wildcard.
 - A strategy for multi-process WebSocket fan-out; the current in-memory manager does not broadcast between instances.
 - Health checks, centralized logs, metrics, alerting, rate limiting, backups, and secret management.
 

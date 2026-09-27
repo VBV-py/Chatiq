@@ -5,6 +5,7 @@ import asyncio
 from dotenv import load_dotenv
 load_dotenv()
 
+from core.config import settings
 from routers import auth, chatrooms, private_chats, messages, media, reactions, stickers, ai
 from tasks.expiry_watcher import expiry_watcher
 from tasks.auto_reset_scheduler import auto_reset_scheduler
@@ -18,9 +19,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ChatIQ API", version="1.0.0", lifespan=lifespan)
 
+cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+if not cors_origins:
+    cors_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
