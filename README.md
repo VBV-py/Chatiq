@@ -196,7 +196,7 @@ Defined by `backend/core/config.py` and `backend/.env.example`:
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes           | Server-side Supabase client key                               |
 | `JWT_SECRET`                | Yes           | Signs and verifies custom JWTs                                |
 | `JWT_ALGORITHM`             | No            | JWT algorithm; defaults to`HS256`                           |
-| `CORS_ORIGINS`              | No            | Comma-separated frontend origins; defaults to `*`            |
+| `CORS_ORIGINS`              | No            | Comma-separated frontend origins; defaults to`*`            |
 | `GROQ_API_KEY`              | No at startup | Required when translation or summaries are invoked            |
 | `GROQ_MODEL`                | No            | Groq model; defaults to`llama-3.3-70b-versatile`            |
 
@@ -599,7 +599,3 @@ Important behavior that should receive automated coverage:
 - Mutual auto-reset and the 24-hour scheduler.
 - Groq error handling and search behavior.
 - Pagination boundaries and concurrent writes.
-
-## License and project status
-
-No license file is present in the repository. ChatIQ is an academic/student project with a working local development path, but production hardening and automated coverage remain future work.
