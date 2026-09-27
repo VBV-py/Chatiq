@@ -58,7 +58,7 @@ async def handle_event(chat_id: str, user_id: str, username: str, raw: str, webs
                 "message_id": payload["message_id"], "user_id": user_id, "emoji": payload["emoji"]
             }})
         except Exception as e:
-            pass
+            await websocket.send_text(json.dumps({"event": "error", "data": str(e)}))
 
     elif event == TYPING:
         await manager.broadcast(chat_id, {"event": TYPING, "data": {"user_id": user_id, "username": username}}, exclude_ws=websocket)

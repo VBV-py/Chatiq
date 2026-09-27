@@ -41,6 +41,10 @@ def get_user_private_chats(user_id: str) -> list:
         chats.append(chat)
     return chats
 
+def is_member(chat_id: str, user_id: str) -> bool:
+    result = supabase.table("chat_members").select("id").eq("chat_id", chat_id).eq("user_id", user_id).execute()
+    return bool(result.data)
+
 def delete_private_chat(chat_id: str, user_id: str):
     member = supabase.table("chat_members").select("id").eq("chat_id", chat_id).eq("user_id", user_id).execute()
     if not member.data:
@@ -59,6 +63,9 @@ def propose_auto_reset(chat_id: str, user_id: str) -> dict:
     return result.data[0]
 
 def accept_auto_reset(chat_id: str, user_id: str) -> dict:
+    member = supabase.table("chat_members").select("id").eq("chat_id", chat_id).eq("user_id", user_id).execute()
+    if not member.data:
+        raise HTTPException(status_code=403, detail="Not a member")
     chat = supabase.table("chats").select("*").eq("id", chat_id).execute().data[0]
     accepted = chat.get("auto_reset_accepted_by") or []
     if user_id not in accepted:

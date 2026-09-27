@@ -86,13 +86,15 @@ def forward_message(message_id: str, user_id: str, target_chat_id: str) -> dict:
     if not msg.data:
         raise HTTPException(status_code=404, detail="Message not found")
     m = msg.data[0]
+    attachments = supabase.table("attachments").select("file_url, file_name, file_size, mime_type").eq("message_id", message_id).execute()
     return send_message(
         chat_id=target_chat_id,
         sender_id=user_id,
         content=m.get("content"),
         message_type=m.get("message_type", "text"),
         sticker_id=m.get("sticker_id"),
-        forwarded_from=message_id
+        forwarded_from=message_id,
+        attachments=attachments.data or [],
     )
 
 def get_messages(chat_id: str, user_id: str, limit: int = 50, offset: int = 0) -> list:

@@ -37,6 +37,10 @@ def get_chatroom(chat_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Chatroom not found")
     return result.data[0]
 
+def is_member(chat_id: str, user_id: str) -> bool:
+    result = supabase.table("chat_members").select("id").eq("chat_id", chat_id).eq("user_id", user_id).execute()
+    return bool(result.data)
+
 def invite_member(chat_id: str, admin_id: str, username: str) -> dict:
     room = get_chatroom(chat_id)
     if room["admin_id"] != admin_id:

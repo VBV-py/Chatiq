@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Message } from "../../types/message";
 import { useAuthStore } from "../../store/authStore";
 import { useMessageStore } from "../../store/messageStore";
-import { editMessage, deleteMessage } from "../../api/messages";
 import { translateMessage } from "../../api/ai";
+import { socketClient } from "../../socket/socketClient";
 import { formatDate } from "../../utils/formatDate";
 import { MessageMenu } from "./MessageMenu";
 import { ReactionBar } from "./ReactionBar";
@@ -12,12 +12,11 @@ import { MediaPreview } from "./MediaPreview";
 import { EmojiPicker } from "./EmojiPicker";
 import { ForwardModal } from "./ForwardModal";
 import { SystemMessage } from "./SystemMessage";
-import { addReaction } from "../../api/reactions";
 
 interface Props { message: Message; chatId: string; }
 export function MessageItem({ message, chatId }: Props) {
   const { user } = useAuthStore();
-  const { updateMessage, removeMessage } = useMessageStore();
+  const { updateMessage } = useMessageStore();
   const [showMenu, setShowMenu] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showForward, setShowForward] = useState(false);
@@ -25,21 +24,19 @@ export function MessageItem({ message, chatId }: Props) {
   const [editVal, setEditVal] = useState(message.content || "");
   const [translation, setTranslation] = useState<string>();
   const isOwn = message.sender_id === user?.id;
-  const handleEdit = async () => {
-    try { const m = await editMessage(message.id, editVal); updateMessage(chatId, message.id, m); setEditing(false); } catch {}
+  const handleEdit = () => {
+    socketClient.send("edit_message", { message_id: message.id, content: editVal });
+    setEditing(false);
   };
-  const handleDelete = async () => {
-    try { await deleteMessage(message.id); removeMessage(chatId, message.id); } catch {}
+  const handleDelete = () => {
+    socketClient.send("delete_message", { message_id: message.id });
   };
   const handleTranslate = async () => {
     const res = await translateMessage(message.content || "");
     setTranslation(res.translated);
   };
-  const handleReact = async (emoji: string) => {
-    try {
-      const r = await addReaction(message.id, emoji);
-      updateMessage(chatId, message.id, { reactions: [...message.reactions, { ...r, username: user?.username }] });
-    } catch {}
+  const handleReact = (emoji: string) => {
+    socketClient.send("add_reaction", { message_id: message.id, emoji });
   };
 
   const handleKeep = () => {
@@ -90,7 +87,7 @@ export function MessageItem({ message, chatId }: Props) {
         <div className="message-time">{formatDate(message.created_at)}</div>
       </div>
       <TranslationOverlay translation={translation} onClear={() => setTranslation(undefined)} />
-      <ReactionBar messageId={message.id} reactions={message.reactions} onUpdate={r => updateMessage(chatId, message.id, { reactions: r })} />
+      <ReactionBar chatId={chatId} messageId={message.id} reactions={message.reactions} onUpdate={r => updateMessage(chatId, message.id, { reactions: r })} />
       {showEmoji && <EmojiPicker onSelect={handleReact} onClose={() => setShowEmoji(false)} />}
       {showMenu && (
         <MessageMenu

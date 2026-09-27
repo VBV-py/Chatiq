@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS chats (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  type TEXT NOT NULL CHECK (type IN ('"'"'chatroom'"'"', '"'"'private'"'"')),
+  type TEXT NOT NULL CHECK (type IN ('"'"'chatroom'"'"', '"'"'private'"'"', '"'"'group'"'"')),
   name TEXT,
   admin_id UUID REFERENCES users(id),
   auto_reset_enabled BOOLEAN DEFAULT FALSE,

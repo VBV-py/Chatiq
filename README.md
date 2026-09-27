@@ -1,586 +1,605 @@
 # ChatIQ
 
-> A Lightweight Chat Application with AI Summaries, Translation, and Search
+ChatIQ is a React + FastAPI real-time chat application backed by Supabase PostgreSQL and Supabase Storage. It supports temporary chatrooms, permanent groups, one-to-one private chats, JWT authentication, WebSocket messaging, media attachments, reactions, stickers, search, Groq-powered translation, AI room summaries, and private-chat auto-reset.
 
-[![Python](<https://img.shields.io/badge/Backend-Python%20%2F%20FastAPI-blue?logo=python>)](https://fastapi.tiangolo.com/)
-[![React](<https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-61DAFB?logo=react>)](https://react.dev/)
-[![Supabase](https://img.shields.io/badge/Database-Supabase-3ECF8E?logo=supabase)](https://supabase.com/)
-[![Gemini](<https://img.shields.io/badge/AI-Gemini%20API-4285F4?logo=google>)](https://ai.google.dev/)
-[![WebSocket](https://img.shields.io/badge/Realtime-WebSocket-orange)](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
+This document describes the implementation currently present in the repository. It does not claim infrastructure that is not included, such as Docker, CI/CD, Redis, queues, vector search, or automated tests.
 
----
+## Contents
 
-## Table of Contents
-
-- [Overview](#-overview)
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
-- [Environment Variables](#-environment-variables)
-- [API Reference](#-api-reference)
-- [WebSocket Events](#-websocket-events)
-- [Database Schema](#-database-schema)
-- [UI Pages](#-ui-pages)
-- [Out of Scope](#-out-of-scope)
-
----
-
-## Overview
-
-ChatIQ is a focused, real-time web chat application built as an academic/student project. It provides **three chat modes** — a temporary group chatroom, a persistent permanent group, and a persistent private chat — each powered by **three AI utilities**: summarization, translation, and message search.
-
----
+- [Features](#features)
+- [Architecture](#architecture)
+- [Repository Structure](#repository-structure)
+- [Local Setup](#local-setup)
+- [Configuration](#configuration)
+- [HTTP API](#http-api)
+- [WebSocket API](#websocket-api)
+- [Data Model](#data-model)
+- [Runtime Behavior](#runtime-behavior)
+- [Security and Error Handling](#security-and-error-handling)
+- [AI and Search](#ai-and-search)
+- [Deployment Reality](#deployment-reality)
+- [Testing and Known Gaps](#testing-and-known-gaps)
 
 ## Features
 
-### Feature 1 — Temporary Chatroom
+### Authentication and profile
 
-- Multi-user, invite-based group room created by one admin
-- Admin can invite/remove members and delete the room at any time
-- **Auto-expiry**: room is automatically destroyed when all members go offline
-- **AI Summary**: generated before room deletion (and on-demand), posted as a system message with chatroom name, members present, and timestamp
-- Expiry summary is preserved and delivered to all past members even after the room is deleted
+- Register with a unique username and email.
+- Login with email and password.
+- Passwords are hashed with `bcrypt`.
+- Access tokens are custom JWTs with a seven-day expiration.
+- The frontend persists the token and user in browser `localStorage`.
+- Users can update their preferred translation language.
 
-### Feature 1b — Permanent Groups
+### Chat types
 
-- Functions identically to a temporary chatroom (invite-based, multi-user)
-- **Persistent**: Unlike temporary rooms, permanent groups are never auto-deleted when members go offline
-- The group creator (admin) can still manually delete the group at any time
-- Perfect for long-term teams and persistent study groups
+- **Temporary chatroom**: named multi-user room. The creator is the admin. Admins can invite/remove members and delete the room. A background watcher deletes a temporary room when every member is offline and no WebSocket is connected.
+- **Permanent group**: the same room model with `type = group`; it is not selected by the expiry watcher.
+- **Private chat**: one-to-one persistent chat. Creating a chat with the same pair reuses an existing private chat when one exists.
 
-### Feature 2 — Private Chat
+### Messaging
 
-- Persistent one-to-one conversation (WhatsApp-style)
-- Either user can manually delete the conversation
-- **24-hour Auto-Reset**: both users can opt-in to auto-clear messages every 24 hours; requires mutual agreement; either side can disable it
-- Online/offline status and message delivery/read indicators
+- Text, image, video, audio, file, and sticker message types are represented in the database.
+- Text messages can be edited by their sender.
+- Messages can be soft-deleted by setting `deleted = true` and clearing content.
+- Messages can be copied through the browser clipboard, forwarded, and reacted to.
+- Uploaded files are stored in Supabase Storage and linked through the `attachments` table.
+- WebSocket messages are queued in the frontend while a socket is connecting or reconnecting.
 
-### Feature 3 — AI Translation
+### Realtime behavior
 
-- Translate any individual message into a preferred language on request
-- Each user sets their preferred target language in settings
-- Translation is shown only to the requester — original message unchanged for others
-- Powered by Gemini API
+The frontend opens one WebSocket for the active chat. The backend authenticates the token from the query string, verifies membership, tracks online state, and broadcasts events through an in-process `ConnectionManager`. Supported message actions include sending, editing, deleting, forwarding, stickers, reactions, and typing indicators.
 
-### Feature 4 — Message Search
+### AI and search
 
-- Search within a chatroom or private chat by word or sentence
-- Results ranked by relevance, with sender and timestamp
-- Powered by PostgreSQL full-text search (tsvector/tsquery + GIN index)
-- Scoped per chat — no cross-chat or global search
+- Translation calls Groq using the configured model, defaulting to `llama-3.3-70b-versatile`.
+- Temporary-room summaries call the same Groq integration and are stored in `room_summaries` before the room is deleted.
+- Summaries are also posted to a private chat with the `Chatty` bot user.
+- Search is scoped to a chat and currently uses a case-insensitive `ILIKE` query. The database also defines a generated English `tsvector` and GIN index, but the current search service does not use that index.
 
-### Feature 5 — Message Actions
+## Architecture
 
-- **Delete/Unsend**: removes message for all participants in real time
-- **Edit**: edit own text messages only; shows "edited" indicator; media messages cannot be edited
-- **Copy**: copy any visible message text to clipboard
-- **Forward**: forward any visible message (text or media) to another chat
-
-### Feature 6 — Reactions & Stickers
-
-- React to any message with emoji (👍 ❤️ 😂 😮 😢 etc.)
-- Multiple reactions from multiple users on a single message; remove your own reaction
-- Send **static stickers** from a fixed, app-bundled sticker pack as standalone messages
-
----
-
-## Tech Stack
-
-| Layer          | Technology                                                |
-| -------------- | --------------------------------------------------------- |
-| Frontend       | React + TypeScript (Vite)                                 |
-| Backend / API  | Python — FastAPI                                         |
-| Real-time      | WebSockets (FastAPI native)                               |
-| Authentication | JWT (Supabase Auth or custom JWT)                         |
-| Database       | Supabase (managed PostgreSQL)                             |
-| Media Storage  | Supabase Storage                                          |
-| Message Search | PostgreSQL full-text search (tsvector/tsquery)            |
-| AI Provider    | Gemini API (Flash model) — summarization and translation |
-
----
-
-## Project Structure
-
+```text
+React/Vite browser
+  | Axios REST requests with Authorization: Bearer <JWT>
+  | WebSocket /api/ws/{chat-type}/{chat-id}?token=<JWT>
+  v
+FastAPI application
+  | routers: auth, chatrooms, private_chats, messages, media, reactions, stickers, ai
+  | services: business rules and Supabase calls
+  | ws_core: connection manager and event dispatcher
+  | lifespan tasks: expiry watcher and auto-reset scheduler
+  v
+Supabase
+  | PostgreSQL tables, constraints, generated search column, indexes
+  | Storage bucket: media
+  v
+Groq API
+  | translation and room-summary text generation
 ```
-ChatIQ/
-│
+
+`backend/main.py` creates the FastAPI app, enables permissive CORS, registers routers under `/api`, and starts the two polling tasks during the application lifespan. There is no message broker or shared WebSocket layer; each backend process owns its own active connections.
+
+## Repository Structure
+
+```text
+.
 ├── README.md
-├── .env.example
-├── .gitignore
-│
-├── backend/                          # Python FastAPI backend
-│   ├── main.py                       # App entry point, router registration
+├── INTERVIEW.md
+├── setup.md
+├── backend/
+│   ├── main.py
 │   ├── requirements.txt
-│   ├── .env
-│   │
-│   ├── core/                         # App-wide config & utilities
-│   │   ├── config.py                 # Settings (env vars, JWT secret, etc.)
-│   │   ├── database.py               # Supabase client setup
-│   │   ├── security.py               # Password hashing, JWT creation/validation
-│   │   └── dependencies.py           # FastAPI dependency injection (get_current_user)
-│   │
-│   ├── models/                       # Pydantic schemas (request/response models)
-│   │   ├── user.py
-│   │   ├── chat.py
-│   │   ├── message.py
-│   │   ├── reaction.py
-│   │   ├── sticker.py
-│   │   ├── attachment.py
-│   │   └── room_summary.py
-│   │
-│   ├── routers/                      # FastAPI route handlers
-│   │   ├── auth.py                   # POST /register, /login, /logout
-│   │   ├── chatrooms.py              # Chatroom CRUD, invite, join, summarize
-│   │   ├── private_chats.py          # Private chat create, delete, auto-reset
-│   │   ├── messages.py               # Send, edit, delete, forward messages
-│   │   ├── media.py                  # POST /upload, GET /media/{id}
-│   │   ├── reactions.py              # Add/remove emoji reactions
-│   │   ├── stickers.py               # List sticker packs, send sticker
-│   │   └── ai.py                     # POST /ai/translate, /ai/summarize
-│   │
-│   ├── services/                     # Business logic layer
-│   │   ├── auth_service.py           # Registration, login, token management
-│   │   ├── chatroom_service.py       # Chatroom lifecycle, expiry detection
-│   │   ├── private_chat_service.py   # Private chat, auto-reset scheduler
-│   │   ├── message_service.py        # Message CRUD, forward, search
-│   │   ├── media_service.py          # Upload/retrieve via Supabase Storage
-│   │   ├── reaction_service.py       # Reaction add/remove
-│   │   ├── sticker_service.py        # Sticker listing and seeding
-│   │   ├── search_service.py         # Full-text search queries
-│   │   └── ai_service.py             # Gemini API calls (summarize, translate)
-│   │
-│   ├── websocket/                    # WebSocket connection management
-│   │   ├── manager.py                # ConnectionManager (connect, disconnect, broadcast)
-│   │   ├── handler.py                # Event dispatcher (routes WS events to services)
-│   │   └── events.py                 # Event name constants
-│   │
-│   ├── tasks/                        # Background / scheduled tasks
-│   │   ├── expiry_watcher.py         # Monitors all-members-offline → triggers room expiry
-│   │   └── auto_reset_scheduler.py   # Fires 24-hr auto-reset for opted-in private chats
-│   │
-│   └── db/                           # Database helpers & migrations
-│       ├── migrations/
-│       │   ├── 001_create_users.sql
-│       │   ├── 002_create_chats.sql
-│       │   ├── 003_create_chat_members.sql
-│       │   ├── 004_create_messages.sql
-│       │   ├── 005_create_reactions.sql
-│       │   ├── 006_create_stickers.sql
-│       │   ├── 007_create_attachments.sql
-│       │   └── 008_create_room_summaries.sql
-│       └── seed_stickers.py          # Seeds fixed sticker pack into Stickers table
-│
-├── frontend/                         # React + TypeScript (Vite) frontend
-│   ├── index.html
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   ├── package.json
-│   │
-│   ├── public/
-│   │   └── stickers/                 # Bundled static sticker images
-│   │       └── pack1/
-│   │           ├── sticker_01.png
-│   │           └── ...
-│   │
-│   └── src/
-│       ├── main.tsx
-│       ├── App.tsx
-│       │
-│       ├── api/                      # REST endpoint wrappers
-│       │   ├── auth.ts
-│       │   ├── chatrooms.ts
-│       │   ├── privateChats.ts
-│       │   ├── messages.ts
-│       │   ├── media.ts
-│       │   ├── reactions.ts
-│       │   ├── stickers.ts
-│       │   └── ai.ts
-│       │
-│       ├── socket/                   # WebSocket client
-│       │   ├── socketClient.ts
-│       │   └── socketEvents.ts
-│       │
-│       ├── store/                    # Global state (Zustand / Context)
-│       │   ├── authStore.ts
-│       │   ├── chatStore.ts
-│       │   ├── messageStore.ts
-│       │   └── uiStore.ts
-│       │
-│       ├── pages/
-│       │   ├── LoginPage.tsx
-│       │   ├── RegisterPage.tsx
-│       │   ├── DashboardPage.tsx
-│       │   ├── ChatroomPage.tsx
-│       │   ├── PrivateChatPage.tsx
-│       │   └── SettingsPage.tsx
-│       │
-│       ├── components/
-│       │   ├── auth/
-│       │   │   ├── LoginForm.tsx
-│       │   │   └── RegisterForm.tsx
-│       │   │
-│       │   ├── chat/
-│       │   │   ├── MessageList.tsx
-│       │   │   ├── MessageItem.tsx
-│       │   │   ├── MessageInput.tsx
-│       │   │   ├── MessageMenu.tsx
-│       │   │   ├── SystemMessage.tsx
-│       │   │   ├── SearchBar.tsx
-│       │   │   ├── SearchResults.tsx
-│       │   │   ├── TranslationOverlay.tsx
-│       │   │   ├── ReactionBar.tsx
-│       │   │   ├── EmojiPicker.tsx
-│       │   │   ├── StickerPicker.tsx
-│       │   │   ├── MediaPreview.tsx
-│       │   │   ├── TypingIndicator.tsx
-│       │   │   └── ForwardModal.tsx
-│       │   │
-│       │   ├── chatroom/
-│       │   │   ├── ChatroomHeader.tsx
-│       │   │   ├── InviteMemberModal.tsx
-│       │   │   └── MemberList.tsx
-│       │   │
-│       │   ├── private/
-│       │   │   ├── PrivateChatHeader.tsx
-│       │   │   └── AutoResetSettings.tsx
-│       │   │
-│       │   ├── dashboard/
-│       │   │   ├── ChatroomCard.tsx
-│       │   │   ├── PrivateChatCard.tsx
-│       │   │   └── NewChatroomModal.tsx
-│       │   │
-│       │   └── shared/
-│       │       ├── Avatar.tsx
-│       │       ├── Badge.tsx
-│       │       ├── Modal.tsx
-│       │       ├── Spinner.tsx
-│       │       └── ErrorBoundary.tsx
-│       │
-│       ├── hooks/
-│       │   ├── useAuth.ts
-│       │   ├── useChat.ts
-│       │   ├── useMessages.ts
-│       │   ├── useSocket.ts
-│       │   ├── useSearch.ts
-│       │   └── useTranslation.ts
-│       │
-│       ├── types/
-│       │   ├── user.ts
-│       │   ├── chat.ts
-│       │   ├── message.ts
-│       │   ├── reaction.ts
-│       │   └── sticker.ts
-│       │
-│       └── utils/
-│           ├── formatDate.ts
-│           ├── fileSize.ts
-│           └── constants.ts
-│
-└── srs/
-    └── ChatIQ_SRS_v5.pdf
+│   ├── .env.example
+│   ├── core/                 # config, Supabase client, JWT, auth dependency
+│   ├── models/               # Pydantic request/response models
+│   ├── routers/              # HTTP and WebSocket route handlers
+│   ├── services/             # database and business operations
+│   ├── ws_core/              # WebSocket events, manager, dispatcher
+│   ├── tasks/                # expiry and auto-reset polling loops
+│   └── db/
+│       ├── migrations/       # ordered SQL migrations
+│       ├── setup_database.sql # legacy one-shot setup script
+│       └── migration_add_group.sql
+└── frontend/
+    ├── package.json
+    ├── .env.example
+    ├── public/stickers/      # bundled sticker assets
+    └── src/
+        ├── api/              # Axios endpoint wrappers
+        ├── components/       # chat, auth, dashboard, shared UI
+        ├── hooks/             # auth, chat, message, socket, search hooks
+        ├── pages/             # login, register, dashboard, chat, settings
+        ├── socket/            # WebSocket client and event names
+        ├── store/             # Zustand auth/chat/message/UI state
+        ├── types/             # TypeScript domain types
+        └── utils/             # constants and formatting helpers
 ```
 
----
+Important implementation files:
 
-## Getting Started
+- [backend/main.py](backend/main.py): app wiring and background tasks.
+- [backend/core/security.py](backend/core/security.py): bcrypt and JWT operations.
+- [backend/core/dependencies.py](backend/core/dependencies.py): HTTP bearer authentication.
+- [backend/services/message_service.py](backend/services/message_service.py): message CRUD, forwarding, history, and attachment persistence.
+- [backend/ws_core/handler.py](backend/ws_core/handler.py): client event dispatcher.
+- [backend/ws_core/manager.py](backend/ws_core/manager.py): in-process connection registry and broadcasts.
+- [frontend/src/hooks/useSocket.ts](frontend/src/hooks/useSocket.ts): active-chat subscriptions and store updates.
+- [frontend/src/socket/socketClient.ts](frontend/src/socket/socketClient.ts): reconnecting browser WebSocket client.
+
+## Local Setup
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
-- [Supabase](https://supabase.com/) project (free tier)
-- [Google Gemini API](https://ai.google.dev/) key (free tier)
+- Python 3.11 or newer.
+- Node.js and npm.
+- A Supabase project with PostgreSQL and a Storage bucket.
+- A Groq API key for translation and summaries.
 
-### Backend Setup
+### Backend
+
+PowerShell:
+
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+Bash:
 
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env            # fill in your keys
-# Apply db/migrations/ in order via Supabase SQL editor
+cp .env.example .env
+```
+
+Fill in `backend/.env`, apply the SQL migrations in order through the Supabase SQL editor, create a public Storage bucket named `media`, and seed stickers:
+
+```bash
 python db/seed_stickers.py
 uvicorn main:app --reload --port 8000
 ```
 
-### Frontend Setup
+The API health response is available at `http://localhost:8000/`; FastAPI documentation is at `http://localhost:8000/docs`.
+
+For an existing database created before permanent groups were added, apply `backend/db/migration_add_group.sql`. The ordered migration `002_create_chats.sql` now includes `group`; the older `setup_database.sql` one-shot script still has the old chat-type constraint and should not be treated as the current source of truth.
+
+### Frontend
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env            # fill in backend URL
+Copy-Item .env.example .env       # PowerShell
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`.
+The Vite development server normally starts at `http://localhost:5173`. If that port is busy, Vite chooses another port and prints it. The frontend production check is:
 
----
-
-## Environment Variables
-
-**Backend `.env`**
-
-```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-JWT_SECRET=your-super-secret-jwt-key
-JWT_ALGORITHM=HS256
-GEMINI_API_KEY=your-gemini-api-key
+```bash
+npm run build
 ```
 
-**Frontend `.env`**
+## Configuration
 
-```env
-VITE_API_BASE_URL=http://localhost:8000
-VITE_WS_BASE_URL=ws://localhost:8000
+### Backend variables
+
+Defined by `backend/core/config.py` and `backend/.env.example`:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `SUPABASE_URL` | Yes | Supabase project URL |
+| `SUPABASE_KEY` | Yes | Configured but not used by `core/database.py` for the client |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-side Supabase client key |
+| `JWT_SECRET` | Yes | Signs and verifies custom JWTs |
+| `JWT_ALGORITHM` | No | JWT algorithm; defaults to `HS256` |
+| `GROQ_API_KEY` | No at startup | Required when translation or summaries are invoked |
+| `GROQ_MODEL` | No | Groq model; defaults to `llama-3.3-70b-versatile` |
+
+The service-role key is used by the backend and must never be exposed to the browser.
+
+### Frontend variables
+
+Defined in `frontend/src/utils/constants.ts`:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | API origin |
+| `VITE_WS_BASE_URL` | `ws://localhost:8000` | WebSocket origin |
+
+`frontend/.env` is local-only and ignored by Git. Production HTTPS deployments should use an HTTPS API URL and `wss://` WebSocket URL.
+
+## HTTP API
+
+All HTTP routes below are prefixed with `/api`. Except registration and login, they require:
+
+```http
+Authorization: Bearer <access_token>
 ```
 
----
+FastAPI also exposes the generated OpenAPI document at `/openapi.json` and Swagger UI at `/docs`.
 
-## API Reference
+### Authentication
 
-### Auth
+#### `POST /api/register`
 
-| Method | Endpoint  | Description        |
-| ------ | --------- | ------------------ |
-| POST   | /register | Register new user  |
-| POST   | /login    | Login, receive JWT |
-| POST   | /logout   | End session        |
+Body:
 
-### Chatrooms
+```json
+{"username":"alice","email":"alice@example.com","password":"secret"}
+```
 
-| Method | Endpoint                         | Description           |
-| ------ | -------------------------------- | --------------------- |
-| POST   | /chatrooms                       | Create chatroom       |
-| POST   | /chatrooms/{id}/invite           | Invite a user         |
-| POST   | /chatrooms/{id}/join             | Join the room         |
-| DELETE | /chatrooms/{id}/members/{userId} | Admin removes member  |
-| DELETE | /chatrooms/{id}                  | Admin deletes room    |
-| POST   | /chatrooms/{id}/summarize        | On-demand AI summary  |
-| GET    | /chatrooms/{id}/messages         | Fetch message history |
-| GET    | /chatrooms/{id}/search?q=...     | Search messages       |
+Returns `TokenResponse`:
 
-### Private Chats
+```json
+{
+  "access_token": "<jwt>",
+  "token_type": "bearer",
+  "user": {
+    "id": "<uuid>",
+    "username": "alice",
+    "email": "alice@example.com",
+    "preferred_language": "en",
+    "created_at": "<timestamp>"
+  }
+}
+```
 
-| Method | Endpoint                               | Description           |
-| ------ | -------------------------------------- | --------------------- |
-| POST   | /private-chats                         | Start private chat    |
-| GET    | /private-chats/{id}/messages           | Fetch message history |
-| GET    | /private-chats/{id}/search?q=...       | Search messages       |
-| DELETE | /private-chats/{id}                    | Delete the chat       |
-| POST   | /private-chats/{id}/auto-reset/propose | Propose auto-reset    |
-| POST   | /private-chats/{id}/auto-reset/accept  | Accept auto-reset     |
-| POST   | /private-chats/{id}/auto-reset/disable | Disable auto-reset    |
+Possible service errors include `400` for duplicate username/email and `500` for an unsuccessful insert. Pydantic validates the email format.
 
-### Messages & Media
+#### `POST /api/login`
 
-| Method | Endpoint                         | Description           |
-| ------ | -------------------------------- | --------------------- |
-| POST   | /messages                        | Send a message        |
-| PUT    | /messages/{id}                   | Edit text message     |
-| DELETE | /messages/{id}                   | Delete/unsend message |
-| POST   | /messages/{id}/forward           | Forward message       |
-| POST   | /messages/{id}/reactions         | Add emoji reaction    |
-| DELETE | /messages/{id}/reactions/{emoji} | Remove reaction       |
-| POST   | /upload                          | Upload media file     |
-| GET    | /media/{id}                      | Get media file        |
+Body: `{"email":"alice@example.com","password":"secret"}`. Returns the same token response. Invalid or unknown credentials return `401`.
 
-### Stickers
+#### `POST /api/logout`
 
-| Method | Endpoint          | Description            |
-| ------ | ----------------- | ---------------------- |
-| GET    | /stickers         | List sticker packs     |
-| POST   | /messages/sticker | Send a sticker message |
+Requires a valid bearer token. Returns `{"message":"Logged out successfully"}`. Logout is stateless on the server; the frontend removes its local token.
 
-### AI
+#### `GET /api/me`
 
-| Method | Endpoint      | Description           |
-| ------ | ------------- | --------------------- |
-| POST   | /ai/translate | Translate a message   |
-| POST   | /ai/summarize | Generate room summary |
+Returns the authenticated `UserOut` record. Missing, expired, or invalid credentials return `401`; a missing database user returns `404`.
 
----
+#### `PATCH /api/me/language`
 
-## WebSocket Events
+Body: `{"preferred_language":"es"}`. Returns the updated `UserOut`. The language is stored as an unrestricted string; the frontend supplies a fixed list of language codes.
 
-### Client → Server
+### Chatrooms and groups
 
-| Event                | Description                          |
-| -------------------- | ------------------------------------ |
-| join_room            | Join a chat to receive its events    |
-| leave_room           | Leave a chat                         |
-| send_message         | Send a new message                   |
-| edit_message         | Edit own text message                |
-| delete_message       | Delete/unsend own message            |
-| forward_message      | Forward a message to another chat    |
-| send_sticker         | Send a sticker as standalone message |
-| add_reaction         | React to a message with emoji        |
-| remove_reaction      | Remove own reaction                  |
-| typing / stop_typing | Signal typing status                 |
+#### `POST /api/chatrooms`
 
-### Server → Client
+Body: `{"name":"Study Group","chat_type":"chatroom"}`. `chat_type` defaults to `chatroom`; service code accepts `chatroom` and `group`. The creator is inserted into `chat_members` and marked online. Returns `ChatOut`.
 
-| Event                      | Description                                 |
-| -------------------------- | ------------------------------------------- |
-| receive_message            | New message pushed to participants          |
-| message_edited             | Message was edited                          |
-| message_deleted            | Message was deleted/unsent                  |
-| reaction_added             | Reaction placed on a message                |
-| reaction_removed           | Reaction removed from a message             |
-| user_online / user_offline | Presence changes (used for chatroom expiry) |
-| room_expired               | Chatroom deleted, summary included          |
-| chat_reset                 | Private chat auto-reset occurred            |
-| ai_summary_ready           | AI summary delivered                        |
-| message_translated         | Translated message returned to requester    |
+#### `GET /api/chatrooms`
 
----
+Returns the authenticated user's memberships for chats whose type is `chatroom` or `group`.
 
-## Database Schema
+#### `GET /api/chatrooms/{chat_id}`
 
-### Users
+Returns chat metadata for a chatroom/group. The route requires authentication, while message/member operations enforce membership.
 
-| Field              | Description                         |
-| ------------------ | ----------------------------------- |
-| id                 | Primary key                         |
-| username           | Unique display name                 |
-| email              | Unique email for login              |
-| password_hash      | bcrypt-hashed password              |
-| preferred_language | Default language for AI translation |
-| created_at         | Account creation timestamp          |
+#### `POST /api/chatrooms/{chat_id}/invite`
 
-### Chats
+Body: `{"username":"bob"}`. Only `admin_id` can invite. Returns the inserted membership. Common errors: `403` non-admin, `404` room/user missing, `400` already a member.
 
-| Field                  | Description                            |
-| ---------------------- | -------------------------------------- |
-| id                     | Primary key                            |
-| type                   | "chatroom" or "private"                |
-| name                   | Chatroom name (null for private chats) |
-| admin_id               | FK → Users (null for private chats)   |
-| auto_reset_enabled     | 24-hr auto-reset active flag           |
-| auto_reset_accepted_by | List of user IDs who accepted          |
-| created_at             | Creation timestamp                     |
-| last_reset_at          | Last auto-reset timestamp              |
+#### `POST /api/chatrooms/{chat_id}/join`
 
-### Chat Members
+Adds the current user if absent, or marks an existing membership online. Returns a status or membership row.
 
-| Field     | Description                              |
-| --------- | ---------------------------------------- |
-| id        | Primary key                              |
-| chat_id   | FK → Chats                              |
-| user_id   | FK → Users                              |
-| is_online | For all-members-offline expiry detection |
-| joined_at | Timestamp the member joined              |
+#### `DELETE /api/chatrooms/{chat_id}/members/{user_id}`
 
-### Messages
+Only the room admin can remove another member; the admin cannot remove themselves. Returns `{"message":"Member removed"}`.
 
-| Field          | Description                                 |
-| -------------- | ------------------------------------------- |
-| id             | Primary key                                 |
-| chat_id        | FK → Chats                                 |
-| sender_id      | FK → Users (null when sender is AI)        |
-| sender_type    | "user" or "ai"                              |
-| content        | Message text (null for sticker messages)    |
-| message_type   | text, image, video, audio, file, or sticker |
-| sticker_id     | FK → Stickers (when type is sticker)       |
-| edited         | True if text has been edited                |
-| deleted        | True if message has been unsent             |
-| forwarded_from | FK → Messages (nullable)                   |
-| search_vector  | Generated tsvector column with GIN index    |
-| created_at     | Send timestamp                              |
+#### `GET /api/chatrooms/{chat_id}/members`
 
-### Reactions
+Returns member rows with `user_id`, `username`, `is_online`, and `joined_at`.
 
-| Field      | Description        |
-| ---------- | ------------------ |
-| id         | Primary key        |
-| message_id | FK → Messages     |
-| user_id    | FK → Users        |
-| emoji      | Reaction emoji     |
-| created_at | Reaction timestamp |
+#### `GET /api/chatrooms/{chat_id}/messages?limit=50&offset=0`
 
-Unique constraint on (message_id, user_id, emoji).
+Returns ordered message history with sender username, reactions, and attachments. Membership is required.
 
-### Stickers
+#### `GET /api/chatrooms/{chat_id}/search?q=hello`
 
-| Field         | Description                      |
-| ------------- | -------------------------------- |
-| id            | Primary key                      |
-| pack_name     | Sticker pack name                |
-| image_url     | Storage location of static image |
-| display_order | Sort order within pack           |
+Returns non-deleted messages in the chat whose content contains the query, case-insensitively. Membership is checked; non-members receive an empty result from the search service.
 
-### Attachments
+#### `DELETE /api/chatrooms/{chat_id}/messages`
 
-| Field      | Description          |
-| ---------- | -------------------- |
-| id         | Primary key          |
-| message_id | FK → Messages       |
-| file_url   | Supabase Storage URL |
-| file_name  | Original file name   |
-| file_size  | Size in bytes        |
-| mime_type  | MIME type            |
+Deletes all messages in the chat after membership validation. Returns `{"message":"Chat cleared successfully"}`.
 
-### Room Summaries
+#### `POST /api/chatrooms/{chat_id}/summarize`
 
-| Field           | Description                              |
-| --------------- | ---------------------------------------- |
-| id              | Primary key                              |
-| chat_id         | Chatroom ID at summarization time        |
-| chat_name       | Chatroom name (preserved after deletion) |
-| members_present | List of usernames present                |
-| summary_text    | AI-generated summary content             |
-| generated_at    | Summary generation timestamp             |
-| trigger         | "manual" or "expiry"                     |
+Generates a Groq summary, stores a `room_summaries` row, creates/posts a summary in each member's private chat with `Chatty`, broadcasts those private-chat messages, and returns `{"message":"Summaries sent"}`. Groq configuration or database failures surface as server errors.
 
----
+#### `DELETE /api/chatrooms/{chat_id}`
 
-## UI Pages
+Only the admin can delete. The service attempts a summary first, removes stored attachment objects, and deletes the chat. Chat deletion cascades to members/messages/reactions/attachments at the database level. The summary row is deliberately not FK-linked to `chats`, so it can survive deletion.
 
-| Page               | Description                                                                        |
-| ------------------ | ---------------------------------------------------------------------------------- |
-| Login              | User login                                                                         |
-| Register           | New user registration                                                              |
-| Dashboard          | All active chatrooms and private chats                                             |
-| Chatroom View      | Messaging, media, stickers, reactions, invite, search, summarize, per-message menu |
-| Private Chat View  | Messaging, media, stickers, reactions, search, delete, auto-reset toggle           |
-| Profile / Settings | User profile and preferred translation language                                    |
+### Private chats
 
----
+#### `POST /api/private-chats?target_username=bob`
 
-## Out of Scope
+The target username is a query parameter. The service finds or creates a private chat containing the two users. Missing target users return `404`.
 
-- Friend/contact system, friend requests, blocking
-- Group admin hierarchies beyond a single room-admin role
-- Message pinning or reply-to threading
-- Editing media messages (edit is text-only)
-- Animated stickers, custom sticker uploads, user-created packs
-- AI features beyond summarization, translation, and search
-- Voice or video calling
-- Push notifications outside the app
-- Cross-chat or global search
+#### `GET /api/private-chats`
 
----
+Returns the current user's private chats with nested member usernames and presence data.
 
-## Success Criteria
+#### `GET /api/private-chats/{chat_id}/messages?limit=50&offset=0`
 
-- [ ] Secure registration, login, logout
-- [ ] Create chatrooms, invite members, real-time messaging + media sharing
-- [ ] Chatroom auto-deletion on admin action or all-offline
-- [ ] AI summaries on-demand and at room expiry
-- [ ] Persistent private chat with real-time messaging + media sharing
-- [ ] Manual deletion of private chat
-- [ ] Mutually-agreed 24-hour auto-reset for private chats
-- [ ] Message translation into preferred language
-- [ ] In-chat search by word or sentence
-- [ ] Delete/unsend and edit own messages in real time
-- [ ] Copy and forward any visible message
-- [ ] Emoji reactions and static sticker messages
-- [ ] All-Python backend with Supabase as sole DB/storage provider
-- [ ] Deployed and accessible for demonstration
+Returns ordered history with reactions and attachments. Membership is required.
 
----
+#### `GET /api/private-chats/{chat_id}/search?q=hello`
 
-*Author: VT — ChatIQ SRS v5 — August 2026*
+Per-chat case-insensitive content search. Membership is required by the search service.
+
+#### `DELETE /api/private-chats/{chat_id}`
+
+Any member can delete the private chat. Database cascades remove its dependent rows.
+
+#### `DELETE /api/private-chats/{chat_id}/messages`
+
+Clears all messages for a member.
+
+#### Auto-reset endpoints
+
+- `POST /api/private-chats/{chat_id}/auto-reset/propose`: adds the caller to `auto_reset_accepted_by`.
+- `POST /api/private-chats/{chat_id}/auto-reset/accept`: adds the caller and enables reset when every member is present in the accepted list.
+- `POST /api/private-chats/{chat_id}/auto-reset/disable`: clears acceptance and disables reset.
+
+All validate membership. The scheduler checks enabled private chats every 60 seconds and deletes messages once `last_reset_at` is at least 24 hours old.
+
+### Messages and reactions
+
+#### `POST /api/messages`
+
+Body example:
+
+```json
+{
+  "chat_id":"<uuid>",
+  "content":"Hello",
+  "message_type":"text",
+  "sticker_id":null,
+  "forwarded_from":null,
+  "attachments":[]
+}
+```
+
+The sender must be a member. Attachment inputs contain `file_url`, `file_name`, optional `file_size`, and optional `mime_type`. Returns the inserted message plus created attachment rows.
+
+#### `PUT /api/messages/{message_id}`
+
+Body: `{"content":"Edited text"}`. Only the sender of a `text` message can edit. Media/stickers return `400`; another sender returns `403`.
+
+#### `DELETE /api/messages/{message_id}`
+
+Soft-deletes the message and removes attachment objects from Storage when possible. Normally only the sender can delete. AI summary messages have a special membership-based delete rule.
+
+#### `POST /api/messages/{message_id}/forward`
+
+Body: `{"target_chat_id":"<uuid>"}`. The destination membership is validated by `send_message`; content, type, sticker ID, and attachment metadata are copied and `forwarded_from` references the source message.
+
+#### Reactions
+
+- `POST /api/messages/{message_id}/reactions`, body `{"emoji":"👍"}`. Only eight emojis are allowed: `👍`, `❤️`, `😂`, `😮`, `😢`, `🔥`, `🎉`, `👏`.
+- `DELETE /api/messages/{message_id}/reactions/{emoji}` removes the caller's reaction.
+- `GET /api/messages/{message_id}/reactions` returns reactions with usernames.
+
+Duplicate reactions return `400`. The route itself does not separately verify chat membership; the database reaction operation is keyed by message/user.
+
+### Media and stickers
+
+#### `POST /api/upload`
+
+Multipart form field: `file`. The server reads the complete file, rejects files over 100 MiB with `413`, uploads to the `media` bucket under `<uploader_id>/<uuid>.<extension>`, and returns:
+
+```json
+{"file_url":"<public-url>","file_name":"photo.png","file_size":12345,"mime_type":"image/png"}
+```
+
+The upload endpoint does not itself create a message; the client sends the returned metadata in a subsequent message.
+
+#### `GET /api/stickers`
+
+Returns stickers ordered by `display_order`. Sticker rows are seeded by `backend/db/seed_stickers.py`; bundled frontend images live under `frontend/public/stickers`.
+
+### AI translation
+
+#### `POST /api/ai/translate`
+
+Body:
+
+```json
+{"content":"Hello world","target_language":"Spanish","model":null}
+```
+
+If `target_language` is omitted, the user's stored preferred language is used. The service constructs a translation prompt and calls Groq. Returns `original`, `translated`, `language`, and `model`. If `GROQ_API_KEY` is missing, the endpoint returns `500` with `Groq API key is not configured.`.
+
+## WebSocket API
+
+Endpoints:
+
+```text
+ws://localhost:8000/api/ws/chatroom/{chat_id}?token=<jwt>
+ws://localhost:8000/api/ws/private/{chat_id}?token=<jwt>
+```
+
+The token is decoded with the same JWT settings as HTTP. Invalid tokens close with code `4001`; authenticated non-members close with code `4003`. A successful connection marks the member online and broadcasts `user_online`; disconnecting marks the member offline and broadcasts `user_offline`.
+
+Messages use this envelope:
+
+```json
+{"event":"send_message","data":{"content":"Hello","message_type":"text"}}
+```
+
+### Implemented client-to-server events
+
+| Event | Data | Behavior |
+| --- | --- | --- |
+| `send_message` | `content`, `message_type`, optional `sticker_id`, `attachments` | Persists and broadcasts a message |
+| `send_sticker` | `sticker_id`, `content` | Persists a sticker message and broadcasts it |
+| `edit_message` | `message_id`, `content` | Edits the caller's text message and broadcasts it |
+| `delete_message` | `message_id` | Soft-deletes and broadcasts deletion |
+| `add_reaction` | `message_id`, `emoji` | Validates and broadcasts a reaction |
+| `remove_reaction` | `message_id`, `emoji` | Removes and broadcasts reaction removal |
+| `typing` | any object | Broadcasts typing to other connections |
+| `stop_typing` | any object | Broadcasts typing stop to other connections |
+| `forward_message` | `message_id`, `target_chat_id` | Persists a forwarded message and broadcasts to destination connections |
+
+`join_room` and `leave_room` are declared constants but are not dispatched by `ws_core/handler.py`; the route already connects to the requested chat.
+
+### Server events used by the implementation
+
+- `receive_message`: new message or summary message.
+- `message_edited`: edited message data.
+- `message_deleted`: `{message_id}`.
+- `reaction_added`: reaction with username added by the handler.
+- `reaction_removed`: message/user/emoji identifiers.
+- `typing`, `stop_typing`: user ID and username.
+- `user_online`, `user_offline`: presence payloads.
+- `chat_reset`: emitted by the auto-reset scheduler.
+- `error`: sent to the originating socket when a handled message action fails.
+
+Additional names such as `room_expired`, `ai_summary_ready`, and `message_translated` exist in `ws_core/events.py`, but the current server paths do not consistently emit them.
+
+## Data Model
+
+The migrations define eight main tables:
+
+- `users`: UUID primary key, unique username/email, bcrypt hash, preferred language, creation time.
+- `chats`: UUID primary key, `type` constrained to `chatroom`, `private`, or `group`; optional room name/admin; auto-reset fields.
+- `chat_members`: many-to-many join between users and chats, unique per pair, online state, joined time. Cascades on user/chat deletion.
+- `messages`: chat/sender references, sender type, content, message type, sticker ID, edit/delete flags, self-reference for forwarding, timestamp. The `chat_id` FK cascades from chats; `sender_id` does not specify cascade.
+- `reactions`: message/user/emoji rows with a unique `(message_id, user_id, emoji)` constraint and cascades from message/user deletion.
+- `stickers`: pack metadata and display ordering. `sticker_id` on messages is not declared as a foreign key in the migration.
+- `attachments`: one or more file records per message with Storage URL and metadata; cascades from message deletion.
+- `room_summaries`: durable summary snapshot. `chat_id` intentionally has no FK, allowing summaries to remain after room deletion.
+
+Indexes:
+
+- `messages_chat_id_idx` supports chat history filtering.
+- `messages_search_idx` is a GIN index over a generated English `tsvector`.
+- Username/email uniqueness and the chat-membership uniqueness constraint also provide database indexes through PostgreSQL constraints.
+
+The services issue multiple Supabase REST calls sequentially. There are no explicit database transactions in application code, no stored procedures, and no distributed transaction coordinator. Partial state is therefore possible if a later call fails after an earlier insert/update succeeds.
+
+## Runtime Behavior
+
+### Sending a text message
+
+1. The active `ChatroomPage` or `PrivateChatPage` calls `useSocket().send`.
+2. `socketClient` serializes `{event,data}`. If the socket is not open, it queues up to 100 events.
+3. The WebSocket router authenticates and passes the raw payload to `ws_core.handler.handle_event`.
+4. `message_service.send_message` checks `chat_members`, inserts into `messages`, and optionally inserts attachment rows.
+5. The handler enriches the message with sender username and broadcasts `receive_message` through the in-process manager.
+6. `useSocket` writes the event into Zustand's `messageStore`, and `MessageList` renders it.
+
+### Uploading media
+
+1. `MessageInput` sends the file as multipart data to `/api/upload`.
+2. `media_service` reads and uploads it to the public `media` bucket.
+3. The returned URL and metadata are sent in a WebSocket `send_message` payload.
+4. `message_service` inserts the message and attachment rows.
+5. History queries join attachments so media survives refresh.
+
+### Temporary-room expiry
+
+1. Each successful WebSocket connect/disconnect updates `chat_members.is_online`.
+2. `expiry_watcher` waits five seconds at startup, then polls every 30 seconds.
+3. It selects `type = chatroom`, checks every member's `is_online` value and whether the in-process manager has connections.
+4. It generates a summary with `trigger = expiry`, broadcasts summary messages to private chats, and deletes room data.
+5. Permanent `group` records are not selected by this watcher.
+
+### Private-chat auto-reset
+
+1. Each user calls propose/accept. Accepted IDs are stored in an array on `chats`.
+2. Reset becomes enabled when all current member IDs are accepted.
+3. The scheduler polls enabled private chats every 60 seconds.
+4. Once 24 hours have elapsed since `last_reset_at`, it deletes messages, updates the timestamp, and broadcasts `chat_reset`.
+
+## Security and Error Handling
+
+Implemented controls:
+
+- Password hashing and verification use bcrypt.
+- JWTs are signed with a configurable secret and algorithm and contain `sub`, `username`, `iat`, and `exp`.
+- HTTP routes use `HTTPBearer`; invalid/expired tokens return `401`.
+- WebSockets validate token and membership before accepting.
+- Message edit/delete rules are enforced in the service layer.
+- Chatroom invite/remove/delete rules enforce the room admin.
+- File size is capped at 100 MiB.
+- Reaction emojis are restricted to an allow-list.
+- Pydantic validates request shapes and email format.
+- FastAPI HTTP exceptions provide most expected error responses; storage, Groq, and Supabase failures are generally converted to `500` or printed by background tasks.
+
+Current hardening gaps:
+
+- CORS allows every origin (`allow_origins=["*"]`).
+- The service-role Supabase key is powerful; database RLS policy design is not represented in this repository.
+- There is no rate limiting, account lockout, refresh-token rotation, password reset, CSRF strategy, audit log, or request ID tracing.
+- WebSocket auth passes JWTs in a query string, which can appear in logs; a production design should consider a safer handshake mechanism.
+- Uploads are public and there is no content scanning or MIME allow-list beyond the browser's file picker.
+- Error details from some upstream failures are returned directly.
+
+## AI and Search
+
+The actual AI integration is `groq.Groq` in `backend/services/ai_service.py`. There is no Gemini SDK, OpenAI SDK, RAG pipeline, embeddings generation, vector database, retrieval step, tool calling, or model output schema validation.
+
+Translation prompt shape:
+
+```text
+Translate the following message to <target_language>.
+Return ONLY the translated text, nothing else.
+
+Message: <content>
+```
+
+Summary prompt includes the room name, member names, and non-deleted messages, then asks for discussion points, decisions, and action items. Temperature is `0.2`. The result is accepted as plain text; there is no factuality checker, citation requirement, structured parser, or hallucination detection. The application limits risk by keeping summaries short and treating them as generated chat content, but it does not guarantee correctness.
+
+Search currently uses `ilike('%query%')` scoped by `chat_id` and `deleted = false`, ordered by `created_at`. It is simple and portable through Supabase's query API, but does not use the migration's full-text index and does not rank results.
+
+## Deployment Reality
+
+`setup.md` contains a deployment recipe for a Render/Railway-style backend and Vercel/Netlify-style frontend, but the repository has no Dockerfile, compose file, GitHub Actions workflow, Terraform, Kubernetes manifests, migration runner, structured logging configuration, or monitoring integration.
+
+A production deployment would need:
+
+- One process serving FastAPI and WebSockets behind an HTTPS/WSS reverse proxy.
+- Correct `VITE_API_BASE_URL` and `VITE_WS_BASE_URL` values at frontend build time.
+- A Supabase `media` bucket and all migrations applied, including the group constraint update for older databases.
+- Restricted CORS origins rather than `*`.
+- A strategy for multi-process WebSocket fan-out; the current in-memory manager does not broadcast between instances.
+- Health checks, centralized logs, metrics, alerting, rate limiting, backups, and secret management.
+
+## Testing and Known Gaps
+
+Available checks:
+
+```bash
+cd backend
+python -m compileall -q .
+
+cd frontend
+npm run build
+```
+
+The repository contains manual WebSocket scripts (`backend/ws_test.py` and `backend/ws_test_close.py`) but no pytest suite, frontend unit-test setup, browser E2E suite, load tests, or CI test workflow. The manual scripts use fixed test values and should be treated as examples rather than a complete integration test system.
+
+Important behavior that should receive automated coverage:
+
+- Registration/login and duplicate handling.
+- HTTP bearer/JWT expiry and WebSocket close codes.
+- Room/group/private membership and admin authorization.
+- Two-client delivery of messages, edits, deletes, reactions, typing, and presence.
+- File upload, attachment persistence, and media forwarding.
+- Expiry watcher and summary persistence.
+- Mutual auto-reset and the 24-hour scheduler.
+- Groq error handling and search behavior.
+- Pagination boundaries and concurrent writes.
+
+## License and project status
+
+No license file is present in the repository. ChatIQ is an academic/student project with a working local development path, but production hardening and automated coverage remain future work.

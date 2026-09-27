@@ -1,9 +1,9 @@
 ﻿import { useState } from "react";
 import { Reaction } from "../../types/reaction";
-import { addReaction, removeReaction } from "../../api/reactions";
 import { useAuthStore } from "../../store/authStore";
-interface Props { messageId: string; reactions: Reaction[]; onUpdate: (reactions: Reaction[]) => void; }
-export function ReactionBar({ messageId, reactions, onUpdate }: Props) {
+import { socketClient } from "../../socket/socketClient";
+interface Props { chatId: string; messageId: string; reactions: Reaction[]; onUpdate: (reactions: Reaction[]) => void; }
+export function ReactionBar({ chatId, messageId, reactions, onUpdate }: Props) {
   const { user } = useAuthStore();
   const grouped: Record<string, { emoji: string; count: number; hasOwn: boolean; users: string[] }> = {};
   for (const r of reactions) {
@@ -12,16 +12,8 @@ export function ReactionBar({ messageId, reactions, onUpdate }: Props) {
     grouped[r.emoji].users.push(r.username || r.user_id);
     if (r.user_id === user?.id) grouped[r.emoji].hasOwn = true;
   }
-  const toggle = async (emoji: string, hasOwn: boolean) => {
-    try {
-      if (hasOwn) {
-        await removeReaction(messageId, emoji);
-        onUpdate(reactions.filter(r => !(r.emoji === emoji && r.user_id === user?.id)));
-      } else {
-        const r = await addReaction(messageId, emoji);
-        onUpdate([...reactions, { ...r, username: user?.username }]);
-      }
-    } catch {}
+  const toggle = (emoji: string, hasOwn: boolean) => {
+    socketClient.send(hasOwn ? "remove_reaction" : "add_reaction", { message_id: messageId, emoji });
   };
   if (!Object.keys(grouped).length) return null;
   return (

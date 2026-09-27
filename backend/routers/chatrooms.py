@@ -79,6 +79,10 @@ async def chatroom_ws(chat_id: str, websocket: WebSocket, token: str = Query(...
         await websocket.close(code=4001)
         return
 
+    if not chatroom_service.is_member(chat_id, user_id):
+        await websocket.close(code=4003)
+        return
+
     await manager.connect(chat_id, user_id, websocket)
     chatroom_service.set_member_online(chat_id, user_id, True)
     await manager.broadcast(chat_id, {"event": USER_ONLINE, "data": {"user_id": user_id, "username": username}})
