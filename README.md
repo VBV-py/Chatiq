@@ -85,7 +85,6 @@ Groq API
 ```text
 .
 ├── README.md
-├── INTERVIEW.md
 ├── setup.md
 ├── backend/
 │   ├── main.py
@@ -190,15 +189,15 @@ npm run build
 
 Defined by `backend/core/config.py` and `backend/.env.example`:
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `SUPABASE_URL` | Yes | Supabase project URL |
-| `SUPABASE_KEY` | Yes | Configured but not used by `core/database.py` for the client |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-side Supabase client key |
-| `JWT_SECRET` | Yes | Signs and verifies custom JWTs |
-| `JWT_ALGORITHM` | No | JWT algorithm; defaults to `HS256` |
-| `GROQ_API_KEY` | No at startup | Required when translation or summaries are invoked |
-| `GROQ_MODEL` | No | Groq model; defaults to `llama-3.3-70b-versatile` |
+| Variable                      | Required      | Purpose                                                       |
+| ----------------------------- | ------------- | ------------------------------------------------------------- |
+| `SUPABASE_URL`              | Yes           | Supabase project URL                                          |
+| `SUPABASE_KEY`              | Yes           | Configured but not used by`core/database.py` for the client |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes           | Server-side Supabase client key                               |
+| `JWT_SECRET`                | Yes           | Signs and verifies custom JWTs                                |
+| `JWT_ALGORITHM`             | No            | JWT algorithm; defaults to`HS256`                           |
+| `GROQ_API_KEY`              | No at startup | Required when translation or summaries are invoked            |
+| `GROQ_MODEL`                | No            | Groq model; defaults to`llama-3.3-70b-versatile`            |
 
 The service-role key is used by the backend and must never be exposed to the browser.
 
@@ -206,10 +205,10 @@ The service-role key is used by the backend and must never be exposed to the bro
 
 Defined in `frontend/src/utils/constants.ts`:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `VITE_API_BASE_URL` | `http://localhost:8000` | API origin |
-| `VITE_WS_BASE_URL` | `ws://localhost:8000` | WebSocket origin |
+| Variable              | Default                   | Purpose          |
+| --------------------- | ------------------------- | ---------------- |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | API origin       |
+| `VITE_WS_BASE_URL`  | `ws://localhost:8000`   | WebSocket origin |
 
 `frontend/.env` is local-only and ignored by Git. Production HTTPS deployments should use an HTTPS API URL and `wss://` WebSocket URL.
 
@@ -437,17 +436,17 @@ Messages use this envelope:
 
 ### Implemented client-to-server events
 
-| Event | Data | Behavior |
-| --- | --- | --- |
-| `send_message` | `content`, `message_type`, optional `sticker_id`, `attachments` | Persists and broadcasts a message |
-| `send_sticker` | `sticker_id`, `content` | Persists a sticker message and broadcasts it |
-| `edit_message` | `message_id`, `content` | Edits the caller's text message and broadcasts it |
-| `delete_message` | `message_id` | Soft-deletes and broadcasts deletion |
-| `add_reaction` | `message_id`, `emoji` | Validates and broadcasts a reaction |
-| `remove_reaction` | `message_id`, `emoji` | Removes and broadcasts reaction removal |
-| `typing` | any object | Broadcasts typing to other connections |
-| `stop_typing` | any object | Broadcasts typing stop to other connections |
-| `forward_message` | `message_id`, `target_chat_id` | Persists a forwarded message and broadcasts to destination connections |
+| Event               | Data                                                                    | Behavior                                                               |
+| ------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `send_message`    | `content`, `message_type`, optional `sticker_id`, `attachments` | Persists and broadcasts a message                                      |
+| `send_sticker`    | `sticker_id`, `content`                                             | Persists a sticker message and broadcasts it                           |
+| `edit_message`    | `message_id`, `content`                                             | Edits the caller's text message and broadcasts it                      |
+| `delete_message`  | `message_id`                                                          | Soft-deletes and broadcasts deletion                                   |
+| `add_reaction`    | `message_id`, `emoji`                                               | Validates and broadcasts a reaction                                    |
+| `remove_reaction` | `message_id`, `emoji`                                               | Removes and broadcasts reaction removal                                |
+| `typing`          | any object                                                              | Broadcasts typing to other connections                                 |
+| `stop_typing`     | any object                                                              | Broadcasts typing stop to other connections                            |
+| `forward_message` | `message_id`, `target_chat_id`                                      | Persists a forwarded message and broadcasts to destination connections |
 
 `join_room` and `leave_room` are declared constants but are not dispatched by `ws_core/handler.py`; the route already connects to the requested chat.
 
